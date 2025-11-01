@@ -9,7 +9,7 @@ metadata:
 spec:
   project: applications-project
   source:
-    repoURL: https://github.com/ims-platform-dev/portal-kombat.git
+    repoURL: git@github.com/ims-platform-dev/portal-kombat.git
     targetRevision: HEAD
     path: workloads
     helm:
