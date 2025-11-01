@@ -1,15 +1,22 @@
 ---
-apiVersion: pkg.crossplane.io/v1alpha1
-kind: ControllerConfig
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
 metadata:
   name: k8s-config
   annotations:
-    argocd.argoproj.io/sync-wave: "110"   
+    argocd.argoproj.io/sync-wave: "110"
 spec:
-  podSecurityContext:
-    fsGroup: 2000
-  args:
-  - '--debug'
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          securityContext:
+            fsGroup: 2000
+          containers:
+          - name: package-runtime
+            args:
+            - '--debug'
 
 ---
 apiVersion: pkg.crossplane.io/v1
@@ -17,11 +24,11 @@ kind: Provider
 metadata:
   name: provider-kubernetes
   annotations:
-    argocd.argoproj.io/sync-wave: "120"   
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true   
+    argocd.argoproj.io/sync-wave: "120"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.13.0
-  controllerConfigRef:
+  runtimeConfigRef:
     name: k8s-config
 
 ---
