@@ -47,9 +47,11 @@ spec:
   - group: 'pkg.crossplane.io'
     kind: Lock   
   - group: 'pkg.crossplane.io'
-    kind: Provider      
+    kind: Provider
   - group: 'pkg.crossplane.io'
-    kind: ControllerConfig            
+    kind: ControllerConfig
+  - group: 'pkg.crossplane.io'
+    kind: DeploymentRuntimeConfig            
   - group: 'aws.crossplane.io'
     kind: ProviderConfig    
   - group: 'kubernetes.crossplane.io'
