@@ -1,0 +1,50 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files, which might contain sensitive values
+*.tfvars
+*.tfvars.json
+
+# Ignore override files, as they are usually used to override resources locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Terraform lock files (optional - commit these to ensure consistent versions)
+# .terraform.lock.hcl
+
+# Terraform output files
+*.tfplan
+
+# Backend output files
+backend.tf
+
+# Kubernetes kubeconfig
+kubeconfig
+kubeconfig.yaml
