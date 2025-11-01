@@ -2,7 +2,7 @@ dex:
   enabled: false # Disable dex since we are not using
 
 redis-ha:
-  enabled: true
+  enabled: false
 
 controller:
   replicas: 1 # Additional replicas will cause sharding of managed clusters across number of replicas.

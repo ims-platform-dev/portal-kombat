@@ -17,7 +17,7 @@ helm repo update
 #
 # Install Crossplane core components using Helm chart
 #
-helm install crossplane --namespace crossplane-system crossplane-stable/crossplane --version 1.4.1
+helm install crossplane --namespace crossplane-system crossplane-stable/crossplane --version 2.0.2
 
 #
 # Providers extend Crossplane with custom resources that can be used to declaratively configure a system. 

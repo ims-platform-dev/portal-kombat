@@ -28,8 +28,8 @@ spec:
     subnet2-private-cidrBlock: "192.168.51.0/24"
     subnet2-private-availabilityZone: "us-west-2b"     
 
-    cluster-role: arn:aws:iam::937351930975:role/EKS-Cluster-Role
-    workernode-role: arn:aws:iam::937351930975:role/EKS-WorkerNode-Role
+    cluster-role: arn:aws:iam::654654563406:role/EKS-Cluster-Role
+    workernode-role: arn:aws:iam::654654563406:role/EKS-WorkerNode-Role
 
     k8s-version: "1.24"
     workload-type: "non-gpu"
