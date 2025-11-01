@@ -17,7 +17,7 @@ metadata:
 spec:
   description: Project for parent applicatons used when employing app of apps pattern
   sourceRepos:
-  - git@github.com:aws-samples/eks-gitops-crossplane-argocd.git
+  - git@github.com:ims-platform-dev/portal-kombat.git
 
   #
   # Allow this project to deploy only to 'argocd' namespace

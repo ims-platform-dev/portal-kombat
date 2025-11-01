@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: HEAD
-    path: crossplane-complete
+    path: bootstrap/crossplane/crossplane-complete
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system

@@ -2,16 +2,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: workload-apps 
+  name: apps 
   namespace: argocd
   finalizers:
   - resources-finalizer.argocd.argoproj.io  
 spec:
   project: applications-project
   source:
-    repoURL: git@github.com:aws-samples/eks-gitops-crossplane-argocd.git
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: HEAD
-    path: workload-apps
+    path: apps
     helm:
       values: |
         spec:
