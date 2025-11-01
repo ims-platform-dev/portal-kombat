@@ -7,7 +7,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   ignoreCrossplaneConstraints: false
-  package: 654654563406.dkr.ecr.us-east-2.amazonaws.com/crossplane-eks-composition:15.6.0  
+  package: xpkg.upbound.io/upbound/platform-ref-aws-eks:v0.7.0
   packagePullPolicy: IfNotPresent
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 0

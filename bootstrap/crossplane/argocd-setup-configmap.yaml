@@ -9,8 +9,6 @@ metadata:
     app.kubernetes.io/part-of: argocd
 data:
   application.resourceTrackingMethod: annotation
-    application.resourceTrackingMethod: annotation
-
   resource.customizations: |
 
     "*.upbound.io/*":
