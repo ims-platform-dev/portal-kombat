@@ -13,6 +13,8 @@ spec:
   claimNames:
     kind: ObjectStorage
     plural: objectstorages
+  defaultCompositionRef:
+    name: objectstorage-private
   versions:
     - name: v1alpha1
       served: true
