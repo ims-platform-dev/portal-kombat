@@ -78,8 +78,8 @@ spec:
                 transforms:
                   - type: map
                     map:
-                      true: Enabled
-                      false: Suspended
+                      "true": Enabled
+                      "false": Suspended
                 policy:
                   toFieldPath: Replace
 
