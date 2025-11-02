@@ -1,0 +1,26 @@
+---
+# S3 Bucket for Application Uploads
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: ObjectStorage
+metadata:
+  name: my-app-uploads-bucket
+  namespace: default
+spec:
+  parameters:
+    # Bucket name must be globally unique across ALL of AWS
+    # Format: <project>-<env>-<purpose>-<random>
+    bucketName: portal-kombat-dev-uploads-a8f9e2c1
+    region: us-east-2
+    versioning: true
+    encryption: AES256
+    publicAccess: false
+    environment: dev
+
+  # Select the private bucket composition
+  compositionSelector:
+    matchLabels:
+      bucket-type: private
+
+  # Connection details stored here (bucket ARN, region, etc)
+  writeConnectionSecretToRef:
+    name: my-app-uploads-bucket-connection
