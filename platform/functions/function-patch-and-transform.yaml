@@ -1,0 +1,10 @@
+---
+# Crossplane Function: Patch and Transform
+# This function is required for Compositions using the Pipeline mode
+# It enables patching values from Composite Resources to Managed Resources
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: crossplane-contrib-function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.2.1
