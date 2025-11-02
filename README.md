@@ -206,13 +206,6 @@ portal-kombat/
 │       ├── iam-roles/         # IAM roles and policies
 │       └── route53-zones/     # DNS zones
 │
-├── workloads/                 # Application deployments
-│   ├── monitoring/            # Monitoring stack
-│   └── s3reader/              # Example app
-│
-├── apps/                      # Application templates
-│   └── templates/             # Reusable app templates
-│
 ├── bootstrap/                 # Bootstrap scripts (initial setup)
 │   ├── crossplane/
 │   │   ├── install.yaml       # Crossplane installation manifest
@@ -220,18 +213,13 @@ portal-kombat/
 │   │   └── crossplane.sh      # Crossplane setup script
 │   └── s3-state/              # Terraform state backend
 │
-├── examples/                  # Learning examples
-│   └── crossplane/            # Example Crossplane resources
-│       ├── README.md
-│       ├── WALKTHROUGH.md
-│       ├── 01-s3-bucket.yaml
-│       ├── 03-eks-cluster-simple.yaml
-│       └── 04-eks-cluster-custom.yaml
+├── docs/                      # Documentation
+│   ├── ARCHITECTURE.md        # Detailed architecture docs
+│   ├── AGENT.md               # Claude Code agent documentation
+│   └── AGENTS.md              # Multi-agent workflow documentation
 │
-└── docs/                      # Documentation
-    ├── ARCHITECTURE.md        # Detailed architecture docs
-    ├── QUICK-START.md         # Step-by-step setup guide
-    └── SETUP_SUMMARY.md       # Setup reference
+└── .github/                   # GitHub workflows and CI/CD
+    └── workflows/             # GitHub Actions workflows
 ```
 
 ---
