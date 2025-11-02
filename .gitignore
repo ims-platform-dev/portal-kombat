@@ -48,3 +48,6 @@ backend.tf
 # Kubernetes kubeconfig
 kubeconfig
 kubeconfig.yaml
+
+# Archive directory (temporary - can be deleted after verification)
+.archive/
