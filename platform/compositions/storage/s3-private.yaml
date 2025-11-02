@@ -22,90 +22,118 @@ spec:
       input:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
+        patchSets: []
         resources:
+          # Main S3 Bucket
           - name: s3-bucket
             base:
-              apiVersion: s3.aws.crossplane.io/v1beta1
+              apiVersion: s3.aws.upbound.io/v1beta1
               kind: Bucket
               spec:
                 forProvider:
-                  # Region from claim
                   region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
 
-                  # Versioning from claim
+          # Bucket Versioning (separate resource in UPJET)
+          - name: bucket-versioning
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketVersioning
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
                   versioningConfiguration:
-                    status: Enabled
+                    - status: Enabled
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
 
-                  # Always enable encryption for private buckets
-                  serverSideEncryptionConfiguration:
-                    rules:
-                      - applyServerSideEncryptionByDefault:
-                          sseAlgorithm: AES256
+          # Server-Side Encryption (separate resource in UPJET)
+          - name: bucket-encryption
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketServerSideEncryptionConfiguration
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  rule:
+                    - applyServerSideEncryptionByDefault:
+                        - sseAlgorithm: AES256
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
 
-                  # Block all public access
-                  publicAccessBlockConfiguration:
-                    blockPublicAcls: true
-                    blockPublicPolicy: true
-                    ignorePublicAcls: true
-                    restrictPublicBuckets: true
+          # Public Access Block (separate resource in UPJET)
+          - name: bucket-public-access-block
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketPublicAccessBlock
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  blockPublicAcls: true
+                  blockPublicPolicy: true
+                  ignorePublicAcls: true
+                  restrictPublicBuckets: true
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
 
-                  # Lifecycle policy - delete incomplete multipart uploads after 7 days
-                  lifecycleConfiguration:
-                    rules:
-                      - id: cleanup-incomplete-uploads
-                        status: Enabled
-                        abortIncompleteMultipartUpload:
-                          daysAfterInitiation: 7
-
-                  # Tags
-                  tagging:
-                    tagSet:
-                      - key: ManagedBy
-                        value: Crossplane
-                      - key: Project
-                        value: portal-kombat
-
-            providerConfigRef:
-              name: default
-
-            deletionPolicy: Delete
-
-      patches:
-        # Patch bucket name from claim
+          # Lifecycle Configuration (separate resource in UPJET)
+          - name: bucket-lifecycle
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketLifecycleConfiguration
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  rule:
+                    - id: cleanup-incomplete-uploads
+                      status: Enabled
+                      abortIncompleteMultipartUpload:
+                        - daysAfterInitiation: 7
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
+            patches:
+        # === Bucket patches ===
+        # Patch bucket name from claim to s3-bucket resource
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.bucketName
           toFieldPath: metadata.annotations[crossplane.io/external-name]
+          policy:
+            toFieldPath: MergeObjects
 
-        # Patch region from claim
+        # Patch region from claim to s3-bucket resource
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
 
-        # Patch versioning from claim
+        # Patch environment tag from claim to s3-bucket resource
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.Environment
+          policy:
+            fromFieldPath: Optional
+
+        # === Versioning patches ===
+        # Patch versioning from claim to bucket-versioning resource
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.versioning
-          toFieldPath: spec.forProvider.versioningConfiguration.status
+          toFieldPath: spec.forProvider.versioningConfiguration[0].status
           transforms:
             - type: map
               map:
                 true: Enabled
                 false: Suspended
-
-        # Patch environment tag from claim
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tagging.tagSet[3].value
           policy:
-            fromFieldPath: Optional
-
-        # Add environment tag key
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tagging.tagSet[3].key
-          transforms:
-            - type: string
-              string:
-                type: Convert
-                convert: "Environment"
-          policy:
-            fromFieldPath: Optional
+            toFieldPath: Replace
