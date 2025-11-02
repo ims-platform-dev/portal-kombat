@@ -16,6 +16,10 @@ spec:
         spec:
           securityContext:
             fsGroup: 2000
+          containers:
+          - name: package-runtime
+            args:
+            - '--debug'
 
 ---
 apiVersion: pkg.crossplane.io/v1
