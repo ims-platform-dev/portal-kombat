@@ -14,6 +14,7 @@ spec:
     path: bootstrap/crossplane/crossplane-complete
     helm:
       releaseName: crossplane
+      skipCrds: false
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
