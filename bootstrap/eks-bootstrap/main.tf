@@ -239,6 +239,26 @@ module "crossplane" {
   depends_on = [time_sleep.addons_wait_60_seconds]
 }
 
+# Install function-patch-and-transform (required for EnvironmentConfig and Compositions)
+resource "kubectl_manifest" "function_patch_and_transform" {
+  yaml_body = <<-YAML
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: Function
+    metadata:
+      name: function-patch-and-transform
+    spec:
+      package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.9.0
+  YAML
+
+  depends_on = [module.crossplane]
+}
+
+# Wait for function to be installed before creating EnvironmentConfig
+resource "time_sleep" "wait_for_function" {
+  create_duration = "60s"
+  depends_on      = [kubectl_manifest.function_patch_and_transform]
+}
+
 resource "kubectl_manifest" "environmentconfig" {
   yaml_body = templatefile("${path.module}/config/environmentconfig.yaml", {
     awsAccountID = data.aws_caller_identity.current.account_id
@@ -246,7 +266,7 @@ resource "kubectl_manifest" "environmentconfig" {
     vpcID        = local.vpc_id
   })
 
-   depends_on = [module.crossplane]
+  depends_on = [time_sleep.wait_for_function]
 }
 
 #---------------------------------------------------------------
@@ -496,7 +516,12 @@ resource "kubectl_manifest" "kubernetes_provider_config" {
     provider-config-name = local.kubernetes_provider.provider_config_name
   })
 
-  depends_on = [module.crossplane, kubectl_manifest.kubernetes_provider, time_sleep.wait_60_seconds_kubernetes]
+  depends_on = [
+    module.crossplane,
+    kubectl_manifest.kubernetes_provider,
+    kubectl_manifest.kubernetes_provider_clusterolebinding,
+    time_sleep.wait_60_seconds_kubernetes
+  ]
 }
 
 #---------------------------------------------------------------
@@ -557,7 +582,12 @@ resource "kubectl_manifest" "helm_provider_config" {
     provider-config-name = local.helm_provider.provider_config_name
   })
 
-  depends_on = [kubectl_manifest.helm_provider, time_sleep.wait_60_seconds_helm, module.crossplane]
+  depends_on = [
+    kubectl_manifest.helm_provider,
+    kubectl_manifest.helm_runtime_clusterolebinding,
+    time_sleep.wait_60_seconds_helm,
+    module.crossplane
+  ]
 }
 
 #---------------------------------------------------------------

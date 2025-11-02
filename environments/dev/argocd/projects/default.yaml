@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Project for deploying Crossplane with ArgoCD
+  sourceRepos:
+  - git@github.com:ims-platform-dev/portal-kombat.git
+
+  #
+  # List of namespaces/clusters to which Applications in this project can be deployed into
+  #
+  destinations:
+  - namespace: "*"
+    server: https://kubernetes.default.svc   
+

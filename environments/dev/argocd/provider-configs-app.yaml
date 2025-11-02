@@ -1,11 +1,13 @@
 ---
-# Root Application (App of Apps) for Dev Environment
-# This is the entry point that deploys everything in dev
+# Provider Configs Application
+# Deploys DeploymentRuntimeConfigs and ProviderConfigs with IRSA
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-root
+  name: dev-provider-configs
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  # Deploy after platform apps (providers)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -13,16 +15,21 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
-    path: environments/dev/argocd
+    path: shared/configs/provider-configs
     directory:
       recurse: false
-      include: '{platform-apps.yaml,infrastructure-apps.yaml}' #,workload-apps.yaml}'
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: crossplane-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -1,0 +1,28 @@
+---
+# DeploymentRuntimeConfig for AWS Upbound Providers (S3, EC2, EKS, IAM, RDS)
+# This configures the service account with IRSA annotations
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: aws-upbound-runtime-config
+spec:
+  deploymentTemplate:
+    spec:
+      replicas: 1
+      selector: {}
+      template:
+        spec:
+          containers:
+            - name: package-runtime
+              args:
+                - --debug
+                - --enable-management-policies  # Enable management policies for drift detection
+          securityContext:
+            fsGroup: 2000
+  serviceAccountTemplate:
+    metadata:
+      name: provider-aws-upbound
+      annotations:
+        # IMPORTANT: Replace this with the actual IAM role ARN from Terraform output
+        # Run: terraform output crossplane_upbound_irsa_role_arn
+        eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"

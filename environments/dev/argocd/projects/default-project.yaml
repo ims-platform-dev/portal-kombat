@@ -1,0 +1,36 @@
+---
+# Default ArgoCD Project with Crossplane permissions
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  description: Default project for all applications with full Crossplane support
+
+  # Source repositories allowed
+  sourceRepos:
+    - 'git@github.com:ims-platform-dev/portal-kombat.git'
+    - 'https://github.com/ims-platform-dev/portal-kombat.git'
+    - 'https://charts.crossplane.io/stable/'  # Crossplane Helm chart
+
+  # Destinations allowed
+  destinations:
+    - namespace: '*'
+      server: 'https://kubernetes.default.svc'
+
+  # Cluster-scoped resources (CRDs, ClusterRoles, etc.)
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Namespace-scoped resources
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Roles for RBAC (optional - for multi-tenant setups)
+  # roles: []
+
+  # Sync windows (optional - for scheduled deployments)
+  # syncWindows: []

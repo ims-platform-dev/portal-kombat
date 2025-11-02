@@ -1,0 +1,38 @@
+# # Enable feature flags for EnvironmentConfigs and composition functions
+# metrics:
+#   enabled: true
+
+# args:
+#   # Beta features (from Crossplane 2.0.2 --help, these flags actually exist)
+#   - '--enable-realtime-compositions'        # Watch composed resources and reconcile immediately (great for GitOps)
+#   - '--enable-ssa-claims'                   # Use server-side apply for claims (recommended for K8s 1.22+)
+#   - '--enable-usages'                       # Enable deletion ordering and resource protection
+#   - '--enable-deployment-runtime-configs'   # Enable DeploymentRuntimeConfig (required for your runtime configs)
+
+#   # Note: EnvironmentConfigs and composition Functions are GA in 2.0.2 and don't need feature flags
+
+# resourcesCrossplane:
+#   limits:
+#     cpu: "1"
+#     memory: "2Gi"
+#   requests:
+#     cpu: "100m"
+#     memory: "1Gi"
+
+# resourcesRBACManager:
+#   limits:
+#     cpu: "500m"
+#     memory: "1Gi"
+#   requests:
+#     cpu: "100m"
+#     memory: "512Mi"
+# rbacManager:
+#   deploy: true
+#   managementPolicy: All  # Ensures RBAC manager handles all provider permissions
+
+# provider:
+#   packages: []
+
+# # Ensure proper service account permissions
+# serviceAccount:
+#   create: true

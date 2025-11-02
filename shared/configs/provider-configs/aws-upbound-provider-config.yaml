@@ -1,0 +1,11 @@
+---
+# ProviderConfig for UPJET AWS Providers
+# This single ProviderConfig is used by ALL upjet provider families
+# (S3, EC2, EKS, IAM, RDS, DynamoDB, VPC, Lambda, etc.)
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: InjectedIdentity  # Use IRSA for authentication

@@ -5,6 +5,8 @@ kind: Application
 metadata:
   name: dev-platform-crossplane
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  # Deploy after Crossplane core installation
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

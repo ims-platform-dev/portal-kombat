@@ -6,6 +6,8 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-s3:v1.7.0
   packagePullPolicy: IfNotPresent
+  runtimeConfigRef:
+    name: aws-upbound-runtime-config  # Use IRSA runtime config
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -14,6 +16,8 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.7.0
   packagePullPolicy: IfNotPresent
+  runtimeConfigRef:
+    name: aws-upbound-runtime-config
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -22,6 +26,8 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-eks:v1.7.0
   packagePullPolicy: IfNotPresent
+  runtimeConfigRef:
+    name: aws-upbound-runtime-config
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -30,6 +36,8 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-iam:v1.7.0
   packagePullPolicy: IfNotPresent
+  runtimeConfigRef:
+    name: aws-upbound-runtime-config
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -38,3 +46,5 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-rds:v1.7.0
   packagePullPolicy: IfNotPresent
+  runtimeConfigRef:
+    name: aws-upbound-runtime-config
