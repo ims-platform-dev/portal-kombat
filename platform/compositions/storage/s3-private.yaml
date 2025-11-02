@@ -23,52 +23,52 @@ spec:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
-        - name: s3-bucket
-          base:
-            apiVersion: s3.aws.crossplane.io/v1beta1
-            kind: Bucket
-            spec:
-              forProvider:
-            # Region from claim
-            region: us-east-2
+          - name: s3-bucket
+            base:
+              apiVersion: s3.aws.crossplane.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider:
+                  # Region from claim
+                  region: us-east-2
 
-            # Versioning from claim
-            versioningConfiguration:
-              status: Enabled
+                  # Versioning from claim
+                  versioningConfiguration:
+                    status: Enabled
 
-            # Always enable encryption for private buckets
-            serverSideEncryptionConfiguration:
-              rules:
-                - applyServerSideEncryptionByDefault:
-                    sseAlgorithm: AES256
+                  # Always enable encryption for private buckets
+                  serverSideEncryptionConfiguration:
+                    rules:
+                      - applyServerSideEncryptionByDefault:
+                          sseAlgorithm: AES256
 
-            # Block all public access
-            publicAccessBlockConfiguration:
-              blockPublicAcls: true
-              blockPublicPolicy: true
-              ignorePublicAcls: true
-              restrictPublicBuckets: true
+                  # Block all public access
+                  publicAccessBlockConfiguration:
+                    blockPublicAcls: true
+                    blockPublicPolicy: true
+                    ignorePublicAcls: true
+                    restrictPublicBuckets: true
 
-            # Lifecycle policy - delete incomplete multipart uploads after 7 days
-            lifecycleConfiguration:
-              rules:
-                - id: cleanup-incomplete-uploads
-                  status: Enabled
-                  abortIncompleteMultipartUpload:
-                    daysAfterInitiation: 7
+                  # Lifecycle policy - delete incomplete multipart uploads after 7 days
+                  lifecycleConfiguration:
+                    rules:
+                      - id: cleanup-incomplete-uploads
+                        status: Enabled
+                        abortIncompleteMultipartUpload:
+                          daysAfterInitiation: 7
 
-            # Tags
-            tagging:
-              tagSet:
-                - key: ManagedBy
-                  value: Crossplane
-                - key: Project
-                  value: portal-kombat
+                  # Tags
+                  tagging:
+                    tagSet:
+                      - key: ManagedBy
+                        value: Crossplane
+                      - key: Project
+                        value: portal-kombat
 
-          providerConfigRef:
-            name: default
+            providerConfigRef:
+              name: default
 
-          deletionPolicy: Delete
+            deletionPolicy: Delete
 
       patches:
         # Patch bucket name from claim

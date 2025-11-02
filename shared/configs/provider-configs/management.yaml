@@ -1,0 +1,8 @@
+  apiVersion: aws.upbound.io/v1beta1
+  kind: ProviderConfig
+  metadata:
+    name: management-account
+  spec:
+    credentials:
+      source: IRSA
+    assumeRoleARN: arn:aws:iam::873031875931:role/cross_account_management

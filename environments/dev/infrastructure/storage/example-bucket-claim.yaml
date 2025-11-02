@@ -4,7 +4,7 @@
 apiVersion: aws.plt.intelerad.io/v1alpha1
 kind: ObjectStorage
 metadata:
-  name: my-app-data-bucket
+  name: portal-kombat-app-data-bucket
   namespace: default
 spec:
   parameters:
@@ -22,5 +22,5 @@ spec:
 
   # Where to write connection details (if any)
   writeConnectionSecretToRef:
-    name: my-app-data-bucket-connection
+    name: portal-kombat-app-data-bucket-connection
     namespace: default

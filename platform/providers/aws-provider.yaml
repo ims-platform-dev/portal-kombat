@@ -1,6 +1,4 @@
 ---
-# Crossplane AWS Provider Package
-# This installs the AWS provider into the cluster
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
