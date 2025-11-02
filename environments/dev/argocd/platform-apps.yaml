@@ -17,6 +17,7 @@ spec:
     path: platform
     directory:
       recurse: true
+      exclude: 'providers/*.yaml'  # Providers managed by Terraform, not ArgoCD
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system

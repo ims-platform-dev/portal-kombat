@@ -1,0 +1,44 @@
+---
+# ClusterRole for Crossplane UPJET AWS Providers
+# Grants providers permission to access ProviderConfigs
+# This role aggregates into crossplane:allowed-provider-permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane:provider:aws-upbound-providerconfigs
+  labels:
+    rbac.crossplane.io/aggregate-to-allowed-provider-permissions: "true"
+rules:
+- apiGroups:
+  - aws.upbound.io
+  - s3.upbound.io
+  - ec2.upbound.io
+  - eks.upbound.io
+  - iam.upbound.io
+  - rds.upbound.io
+  - dynamodb.upbound.io
+  - vpc.upbound.io
+  - kms.upbound.io
+  - lambda.upbound.io
+  - sqs.upbound.io
+  - sns.upbound.io
+  - elasticache.upbound.io
+  - cloudwatch.upbound.io
+  - cloudwatchlogs.upbound.io
+  - apigateway.upbound.io
+  - aws.m.upbound.io
+  resources:
+  - providerconfigs
+  - providerconfigs/status
+  - providerconfigusages
+  - providerconfigusages/status
+  - clusterproviderconfigs
+  - clusterproviderconfigs/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
