@@ -70,18 +70,6 @@ spec:
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
-            patches:
-              # Patch versioning from claim to bucket-versioning resource
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.versioning
-                toFieldPath: spec.forProvider.versioningConfiguration[0].status
-                transforms:
-                  - type: map
-                    map:
-                      "true": Enabled
-                      "false": Suspended
-                policy:
-                  toFieldPath: Replace
 
           # Server-Side Encryption (separate resource in UPJET)
           - name: bucket-encryption
