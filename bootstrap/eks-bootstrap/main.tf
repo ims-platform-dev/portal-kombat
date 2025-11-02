@@ -145,7 +145,7 @@ module "eks" {
   # for production cluster, add a node group for add-ons that should not be inerrupted such as coredns
   eks_managed_node_groups = {
     initial = {
-      instance_types = ["t3.large", "t3a.large", "t3.medium", "t3a.medium"]
+      instance_types = ["m5.xlarge","m5.2xlarge"]
       capacity_type  = var.capacity_type # defaults to SPOT
       min_size       = 1
       max_size       = 5
