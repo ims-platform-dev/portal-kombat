@@ -6,12 +6,12 @@ kind: Composition
 metadata:
   name: objectstorage-private
   labels:
-    crossplane.io/xrd: xobjectstorages.aws.platform.example
+    crossplane.io/xrd: xobjectstorages.aws.plt.intelerad.io
     provider: aws
     bucket-type: private
 spec:
   compositeTypeRef:
-    apiVersion: aws.platform.example/v1alpha1
+    apiVersion: aws.plt.intelerad.io/v1alpha1
     kind: XObjectStorage
 
   mode: Pipeline

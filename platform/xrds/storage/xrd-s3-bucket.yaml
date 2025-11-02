@@ -4,9 +4,9 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
-  name: xobjectstorages.aws.platform.example
+  name: xobjectstorages.aws.plt.intelerad.io
 spec:
-  group: aws.platform.example
+  group: aws.plt.intelerad.io
   names:
     kind: XObjectStorage
     plural: xobjectstorages

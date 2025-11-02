@@ -1,7 +1,7 @@
 ---
 # Example: Claim an S3 bucket using the platform API
 # This uses the XRD defined in platform/xrds/storage/
-apiVersion: aws.platform.example/v1alpha1
+apiVersion: aws.plt.intelerad.io/v1alpha1
 kind: ObjectStorage
 metadata:
   name: my-app-data-bucket
