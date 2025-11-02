@@ -1,0 +1,103 @@
+---
+# Composition: Secure Private S3 Bucket
+# This implements the XObjectStorage API for private buckets
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: objectstorage-private
+  labels:
+    crossplane.io/xrd: xobjectstorages.aws.platform.example
+    provider: aws
+    bucket-type: private
+spec:
+  compositeTypeRef:
+    apiVersion: aws.platform.example/v1alpha1
+    kind: XObjectStorage
+
+  resources:
+    - name: s3-bucket
+      base:
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            # Region from claim
+            region: us-east-2
+
+            # Versioning from claim
+            versioningConfiguration:
+              status: Enabled
+
+            # Always enable encryption for private buckets
+            serverSideEncryptionConfiguration:
+              rules:
+                - applyServerSideEncryptionByDefault:
+                    sseAlgorithm: AES256
+
+            # Block all public access
+            publicAccessBlockConfiguration:
+              blockPublicAcls: true
+              blockPublicPolicy: true
+              ignorePublicAcls: true
+              restrictPublicBuckets: true
+
+            # Lifecycle policy - delete incomplete multipart uploads after 7 days
+            lifecycleConfiguration:
+              rules:
+                - id: cleanup-incomplete-uploads
+                  status: Enabled
+                  abortIncompleteMultipartUpload:
+                    daysAfterInitiation: 7
+
+            # Tags
+            tagging:
+              tagSet:
+                - key: ManagedBy
+                  value: Crossplane
+                - key: Project
+                  value: portal-kombat
+
+          providerConfigRef:
+            name: default
+
+          deletionPolicy: Delete
+
+      patches:
+        # Patch bucket name from claim
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.bucketName
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+
+        # Patch region from claim
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+
+        # Patch versioning from claim
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.versioning
+          toFieldPath: spec.forProvider.versioningConfiguration.status
+          transforms:
+            - type: map
+              map:
+                true: Enabled
+                false: Suspended
+
+        # Patch environment tag from claim
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tagging.tagSet[3].value
+          policy:
+            fromFieldPath: Optional
+
+        # Add environment tag key
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tagging.tagSet[3].key
+          transforms:
+            - type: string
+              string:
+                type: Convert
+                convert: "Environment"
+          policy:
+            fromFieldPath: Optional

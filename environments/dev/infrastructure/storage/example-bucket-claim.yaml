@@ -1,0 +1,26 @@
+---
+# Example: Claim an S3 bucket using the platform API
+# This uses the XRD defined in platform/xrds/storage/
+apiVersion: aws.platform.example/v1alpha1
+kind: ObjectStorage
+metadata:
+  name: my-app-data-bucket
+  namespace: default
+spec:
+  parameters:
+    bucketName: portal-kombat-dev-app-data-12345  # Must be globally unique
+    region: us-east-2
+    versioning: true
+    encryption: AES256
+    publicAccess: false
+    environment: dev
+
+  # This selects which Composition to use
+  compositionSelector:
+    matchLabels:
+      bucket-type: private
+
+  # Where to write connection details (if any)
+  writeConnectionSecretToRef:
+    name: my-app-data-bucket-connection
+    namespace: default

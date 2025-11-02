@@ -1,0 +1,47 @@
+---
+# Simple S3 Bucket Example
+# This creates a basic S3 bucket in your AWS account
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: my-crossplane-example-bucket
+  annotations:
+    crossplane.io/external-name: my-crossplane-example-bucket-12345  # Must be globally unique
+spec:
+  forProvider:
+    # AWS region where the bucket will be created
+    region: us-east-2
+
+    # Enable versioning
+    versioningConfiguration:
+      status: Enabled
+
+    # Server-side encryption
+    serverSideEncryptionConfiguration:
+      rules:
+        - applyServerSideEncryptionByDefault:
+            sseAlgorithm: AES256
+
+    # Block public access
+    publicAccessBlockConfiguration:
+      blockPublicAcls: true
+      blockPublicPolicy: true
+      ignorePublicAcls: true
+      restrictPublicBuckets: true
+
+    # Tags
+    tagging:
+      tagSet:
+        - key: Environment
+          value: Development
+        - key: ManagedBy
+          value: Crossplane
+        - key: Project
+          value: portal-kombat
+
+  # Use the default provider config
+  providerConfigRef:
+    name: default
+
+  # What to do when this resource is deleted
+  deletionPolicy: Delete  # Options: Delete, Orphan

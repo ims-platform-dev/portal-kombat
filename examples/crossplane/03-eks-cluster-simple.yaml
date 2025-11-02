@@ -1,0 +1,326 @@
+---
+# Simple EKS Cluster Example
+# This creates a basic EKS cluster with a managed node group
+# Note: This requires proper IAM permissions for the crossplane provider
+
+# 1. Create VPC for EKS
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: eks-demo-vpc
+spec:
+  forProvider:
+    region: us-east-2
+    cidrBlock: 10.0.0.0/16
+    enableDnsSupport: true
+    enableDnsHostNames: true
+    tags:
+      - key: Name
+        value: eks-demo-vpc
+      - key: kubernetes.io/cluster/my-eks-cluster
+        value: shared
+  providerConfigRef:
+    name: default
+
+---
+# 2. Internet Gateway
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: InternetGateway
+metadata:
+  name: eks-demo-igw
+spec:
+  forProvider:
+    region: us-east-2
+    vpcIdSelector:
+      matchLabels:
+        name: eks-demo-vpc
+  providerConfigRef:
+    name: default
+
+---
+# 3. Public Subnet 1
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: eks-demo-subnet-public-1
+  labels:
+    zone: us-east-2a
+    access: public
+spec:
+  forProvider:
+    region: us-east-2
+    availabilityZone: us-east-2a
+    cidrBlock: 10.0.1.0/24
+    vpcIdSelector:
+      matchLabels:
+        name: eks-demo-vpc
+    mapPublicIpOnLaunch: true
+    tags:
+      - key: Name
+        value: eks-demo-subnet-public-1
+      - key: kubernetes.io/cluster/my-eks-cluster
+        value: shared
+      - key: kubernetes.io/role/elb
+        value: "1"
+  providerConfigRef:
+    name: default
+
+---
+# 4. Public Subnet 2
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: eks-demo-subnet-public-2
+  labels:
+    zone: us-east-2b
+    access: public
+spec:
+  forProvider:
+    region: us-east-2
+    availabilityZone: us-east-2b
+    cidrBlock: 10.0.2.0/24
+    vpcIdSelector:
+      matchLabels:
+        name: eks-demo-vpc
+    mapPublicIpOnLaunch: true
+    tags:
+      - key: Name
+        value: eks-demo-subnet-public-2
+      - key: kubernetes.io/cluster/my-eks-cluster
+        value: shared
+      - key: kubernetes.io/role/elb
+        value: "1"
+  providerConfigRef:
+    name: default
+
+---
+# 5. Route Table for Public Subnets
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: RouteTable
+metadata:
+  name: eks-demo-routetable-public
+spec:
+  forProvider:
+    region: us-east-2
+    vpcIdSelector:
+      matchLabels:
+        name: eks-demo-vpc
+    routes:
+      - destinationCidrBlock: 0.0.0.0/0
+        gatewayIdSelector:
+          matchLabels:
+            name: eks-demo-igw
+    associations:
+      - subnetIdSelector:
+          matchLabels:
+            name: eks-demo-subnet-public-1
+      - subnetIdSelector:
+          matchLabels:
+            name: eks-demo-subnet-public-2
+    tags:
+      - key: Name
+        value: eks-demo-routetable-public
+  providerConfigRef:
+    name: default
+
+---
+# 6. EKS Cluster IAM Role
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: Role
+metadata:
+  name: eks-demo-cluster-role
+spec:
+  forProvider:
+    assumeRolePolicyDocument: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "eks.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    tags:
+      - key: Name
+        value: eks-demo-cluster-role
+  providerConfigRef:
+    name: default
+
+---
+# 7. Attach AmazonEKSClusterPolicy to Cluster Role
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: eks-demo-cluster-policy
+spec:
+  forProvider:
+    policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+    roleNameSelector:
+      matchLabels:
+        name: eks-demo-cluster-role
+  providerConfigRef:
+    name: default
+
+---
+# 8. Security Group for EKS Cluster
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: SecurityGroup
+metadata:
+  name: eks-demo-cluster-sg
+spec:
+  forProvider:
+    region: us-east-2
+    vpcIdSelector:
+      matchLabels:
+        name: eks-demo-vpc
+    groupName: eks-demo-cluster-sg
+    description: Security group for EKS cluster control plane
+    ingress:
+      - fromPort: 443
+        toPort: 443
+        ipProtocol: tcp
+        ipRanges:
+          - cidrIp: 0.0.0.0/0
+            description: Allow HTTPS
+    tags:
+      - key: Name
+        value: eks-demo-cluster-sg
+  providerConfigRef:
+    name: default
+
+---
+# 9. EKS Cluster
+apiVersion: eks.aws.crossplane.io/v1beta1
+kind: Cluster
+metadata:
+  name: my-eks-cluster
+spec:
+  forProvider:
+    region: us-east-2
+    version: "1.28"
+    roleArnSelector:
+      matchLabels:
+        name: eks-demo-cluster-role
+    resourcesVpcConfig:
+      endpointPrivateAccess: true
+      endpointPublicAccess: true
+      subnetIdSelectors:
+        - matchLabels:
+            access: public
+      securityGroupIdSelectors:
+        - matchLabels:
+            name: eks-demo-cluster-sg
+    tags:
+      Name: my-eks-cluster
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default
+  writeConnectionSecretToRef:
+    name: my-eks-cluster-connection
+    namespace: default
+
+---
+# 10. Node Group IAM Role
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: Role
+metadata:
+  name: eks-demo-nodegroup-role
+spec:
+  forProvider:
+    assumeRolePolicyDocument: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    tags:
+      - key: Name
+        value: eks-demo-nodegroup-role
+  providerConfigRef:
+    name: default
+
+---
+# 11-13. Attach Required Policies to Node Group Role
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: eks-demo-nodegroup-worker-policy
+spec:
+  forProvider:
+    policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    roleNameSelector:
+      matchLabels:
+        name: eks-demo-nodegroup-role
+  providerConfigRef:
+    name: default
+
+---
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: eks-demo-nodegroup-cni-policy
+spec:
+  forProvider:
+    policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    roleNameSelector:
+      matchLabels:
+        name: eks-demo-nodegroup-role
+  providerConfigRef:
+    name: default
+
+---
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: eks-demo-nodegroup-registry-policy
+spec:
+  forProvider:
+    policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+    roleNameSelector:
+      matchLabels:
+        name: eks-demo-nodegroup-role
+  providerConfigRef:
+    name: default
+
+---
+# 14. EKS Node Group
+apiVersion: eks.aws.crossplane.io/v1alpha1
+kind: NodeGroup
+metadata:
+  name: my-eks-nodegroup
+spec:
+  forProvider:
+    region: us-east-2
+    clusterNameSelector:
+      matchLabels:
+        name: my-eks-cluster
+    nodeRoleSelector:
+      matchLabels:
+        name: eks-demo-nodegroup-role
+    subnetIdSelectors:
+      - matchLabels:
+          access: public
+    scalingConfig:
+      minSize: 2
+      maxSize: 4
+      desiredSize: 2
+    instanceTypes:
+      - t3.medium
+    amiType: AL2_x86_64
+    diskSize: 20
+    tags:
+      Name: my-eks-nodegroup
+      ManagedBy: Crossplane
+  providerConfigRef:
+    name: default

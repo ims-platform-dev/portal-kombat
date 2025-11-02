@@ -1,0 +1,71 @@
+---
+# EKS Cluster using Custom Composition
+# This uses your custom EKS composition from bootstrap/crossplane/crossplane-complete/templates/
+
+# PREREQUISITES:
+# 1. Install the composition first:
+#    kubectl apply -f bootstrap/crossplane/crossplane-complete/templates/6-crossplane-eks-composition.yaml
+#
+# 2. Ensure IAM roles exist:
+#    - arn:aws:iam::654654563406:role/EKS-Cluster-Role
+#    - arn:aws:iam::654654563406:role/EKS-WorkerNode-Role
+
+apiVersion: eks.sarathy.io/v1beta1
+kind: EKSCluster
+metadata:
+  name: my-custom-eks-cluster
+  namespace: default
+spec:
+  # Composition reference - must match the composition name
+  compositionRef:
+    name: amazon-eks-cluster
+
+  # Parameters for the composition
+  parameters:
+    # AWS Region
+    region: us-east-2
+
+    # VPC Configuration
+    vpc-name: "MY-EKS-VPC"
+    vpc-cidrBlock: "10.100.0.0/16"
+
+    # Public Subnets (for load balancers)
+    subnet1-public-name: "PUBLIC-SUBNET-1"
+    subnet1-public-cidrBlock: "10.100.1.0/24"
+    subnet1-public-availabilityZone: "us-east-2a"
+
+    subnet2-public-name: "PUBLIC-SUBNET-2"
+    subnet2-public-cidrBlock: "10.100.2.0/24"
+    subnet2-public-availabilityZone: "us-east-2b"
+
+    # Private Subnets (for worker nodes)
+    subnet1-private-name: "PRIVATE-SUBNET-1"
+    subnet1-private-cidrBlock: "10.100.10.0/24"
+    subnet1-private-availabilityZone: "us-east-2a"
+
+    subnet2-private-name: "PRIVATE-SUBNET-2"
+    subnet2-private-cidrBlock: "10.100.11.0/24"
+    subnet2-private-availabilityZone: "us-east-2b"
+
+    # IAM Roles (must exist in your AWS account)
+    cluster-role: arn:aws:iam::654654563406:role/EKS-Cluster-Role
+    workernode-role: arn:aws:iam::654654563406:role/EKS-WorkerNode-Role
+
+    # Kubernetes version
+    k8s-version: "1.28"
+
+    # Worker configuration
+    workload-type: "non-gpu"  # Options: non-gpu, gpu
+    workers-size: 3            # Number of worker nodes
+
+  # Where to store the cluster connection details
+  writeConnectionSecretToRef:
+    namespace: default
+    name: my-custom-eks-cluster-connection
+
+---
+# To get the kubeconfig after cluster is created:
+#
+# kubectl get secret my-custom-eks-cluster-connection -o jsonpath='{.data.kubeconfig}' | base64 -d > kubeconfig-my-cluster
+# export KUBECONFIG=kubeconfig-my-cluster
+# kubectl get nodes

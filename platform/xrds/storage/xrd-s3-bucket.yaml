@@ -1,0 +1,60 @@
+---
+# XRD (CompositeResourceDefinition) for S3 Buckets
+# This defines the API that users will use to claim an S3 bucket
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xobjectstorages.aws.platform.example
+spec:
+  group: aws.platform.example
+  names:
+    kind: XObjectStorage
+    plural: xobjectstorages
+  claimNames:
+    kind: ObjectStorage
+    plural: objectstorages
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: S3 bucket configuration parameters
+                  properties:
+                    bucketName:
+                      type: string
+                      description: Name of the S3 bucket (must be globally unique)
+                    region:
+                      type: string
+                      description: AWS region for the bucket
+                      default: us-east-2
+                    versioning:
+                      type: boolean
+                      description: Enable versioning on the bucket
+                      default: true
+                    encryption:
+                      type: string
+                      description: Encryption type (AES256 or aws:kms)
+                      default: AES256
+                      enum:
+                        - AES256
+                        - aws:kms
+                    publicAccess:
+                      type: boolean
+                      description: Allow public access (default false for security)
+                      default: false
+                    environment:
+                      type: string
+                      description: Environment tag (dev, staging, prod)
+                  required:
+                    - bucketName
+                    - region
+              required:
+                - parameters
