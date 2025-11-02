@@ -68,9 +68,9 @@ configs:
     application.resourceTrackingMethod: "annotation" #use annotation for tracking required for Crossplane
     resource.exclusions: |
       - kinds:
-        - ProviderConfigUsage
+          - ProviderConfigUsage
         apiGroups:
-        - "*"
+          - "*"
     resource.customizations: |
       "awsblueprints.io/*":
         health.lua: |
