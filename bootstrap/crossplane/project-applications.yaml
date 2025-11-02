@@ -19,6 +19,7 @@ spec:
   sourceRepos:
   - https://github.com/aws-samples/eks-gitops-crossplane-argocd.git
   - https://github.com/ims-platform-dev/portal-kombat.git
+  - git@github.com:ims-platform-dev/portal-kombat.git
 
   #
   # Allow this project to deploy only to 'argocd' namespace
