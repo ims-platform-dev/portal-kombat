@@ -23,6 +23,5 @@ spec:
     metadata:
       name: provider-aws-upbound
       annotations:
-        # IMPORTANT: Replace this with the actual IAM role ARN from Terraform output
-        # Run: terraform output crossplane_upbound_irsa_role_arn
-        eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+        # IAM role for IRSA - allows Crossplane providers to access AWS
+        eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-crossplane20251102124054729800000001"
