@@ -38,6 +38,23 @@ spec:
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch bucket name from claim to s3-bucket resource
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.bucketName
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  toFieldPath: MergeObjects
+              # Patch region from claim to s3-bucket resource
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              # Patch environment tag from claim to s3-bucket resource
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags.Environment
+                policy:
+                  fromFieldPath: Optional
 
           # Bucket Versioning (separate resource in UPJET)
           - name: bucket-versioning
@@ -53,6 +70,18 @@ spec:
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch versioning from claim to bucket-versioning resource
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.versioning
+                toFieldPath: spec.forProvider.versioningConfiguration[0].status
+                transforms:
+                  - type: map
+                    map:
+                      true: Enabled
+                      false: Suspended
+                policy:
+                  toFieldPath: Replace
 
           # Server-Side Encryption (separate resource in UPJET)
           - name: bucket-encryption
@@ -104,36 +133,3 @@ spec:
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
-            patches:
-        # === Bucket patches ===
-        # Patch bucket name from claim to s3-bucket resource
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.bucketName
-          toFieldPath: metadata.annotations[crossplane.io/external-name]
-          policy:
-            toFieldPath: MergeObjects
-
-        # Patch region from claim to s3-bucket resource
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-
-        # Patch environment tag from claim to s3-bucket resource
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags.Environment
-          policy:
-            fromFieldPath: Optional
-
-        # === Versioning patches ===
-        # Patch versioning from claim to bucket-versioning resource
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.versioning
-          toFieldPath: spec.forProvider.versioningConfiguration[0].status
-          transforms:
-            - type: map
-              map:
-                true: Enabled
-                false: Suspended
-          policy:
-            toFieldPath: Replace
