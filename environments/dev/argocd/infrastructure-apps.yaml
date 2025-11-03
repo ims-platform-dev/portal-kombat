@@ -34,20 +34,20 @@ spec:
   ignoreDifferences:
     - group: aws.plt.intelerad.io
       kind: ObjectStorage
-      jsonPointers:
-        - /spec/parameters/providerConfig
-        - /spec/compositionRef
-        - /spec/compositionRevisionRef
-        - /spec/resourceRef
-        - /spec/compositeDeletePolicy
+      jqPathExpressions:
+        - .spec.parameters.providerConfig
+        - .spec.compositionRef
+        - .spec.compositionRevisionRef
+        - .spec.resourceRef
+        - .spec.compositeDeletePolicy
     - group: aws.plt.intelerad.io
       kind: EC2Instance
-      jsonPointers:
-        - /spec/parameters/providerConfig
-        - /spec/compositionRef
-        - /spec/compositionRevisionRef
-        - /spec/resourceRef
-        - /spec/compositeDeletePolicy
+      jqPathExpressions:
+        - .spec.parameters.providerConfig
+        - .spec.compositionRef
+        - .spec.compositionRevisionRef
+        - .spec.resourceRef
+        - .spec.compositeDeletePolicy
 ---
 # Shared Provider Configs
 apiVersion: argoproj.io/v1alpha1
