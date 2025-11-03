@@ -8,13 +8,12 @@ metadata:
 spec:
   parameters:
     region: us-east-2
-    amiId: ami-0abcdef1234567890
+    amiId: ami-083b3f53cbda7e5a4
     instanceType: t3.small
-    subnetId: subnet-0123456789abcdef0
+    subnetId: subnet-02ea545b58c156d69
     securityGroupIds:
-      - sg-0123456789abcdef0
-    associatePublicIp: true
-    keyName: portal-kombat-dev-key
+      - sg-0df0ac9467804324d
+    associatePublicIp: false
     rootVolumeSizeGiB: 30
     environment: dev
   writeConnectionSecretToRef:
