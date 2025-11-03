@@ -1,11 +1,13 @@
 ---
-# Root Application (App of Apps) for Dev Environment
-# This is the entry point that deploys everything in dev
+# Additional Providers not managed by Terraform
+# These are providers added after initial bootstrap
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-root
+  name: dev-additional-providers
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # Deploy before platform
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -13,16 +15,21 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
-    path: environments/dev/argocd
+    path: platform/providers
     directory:
-      recurse: false
-      include: '{rbac-app.yaml,providers-app.yaml,platform-apps.yaml,provider-configs-app.yaml,infrastructure-apps.yaml}' #,workload-apps.yaml}'
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: crossplane-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

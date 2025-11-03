@@ -1,0 +1,77 @@
+---
+# XRD (CompositeResourceDefinition) for EKS Clusters
+# This defines the API that users will use to claim an EKS cluster
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xeksclusters.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XEKSCluster
+    plural: xeksclusters
+  claimNames:
+    kind: EKSCluster
+    plural: eksclusters
+  defaultCompositionRef:
+    name: ekscluster-standard
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: EKS cluster configuration parameters
+                  properties:
+                    clusterName:
+                      type: string
+                      description: Name of the EKS cluster
+                    region:
+                      type: string
+                      description: AWS region for the cluster
+                      default: us-east-2
+                    version:
+                      type: string
+                      description: Kubernetes version
+                      default: "1.28"
+                    vpcCidr:
+                      type: string
+                      description: VPC CIDR block
+                      default: "10.0.0.0/16"
+                    environment:
+                      type: string
+                      description: Environment tag (dev, staging, prod)
+                    nodeGroupConfig:
+                      type: object
+                      description: Node group configuration
+                      properties:
+                        instanceTypes:
+                          type: array
+                          description: EC2 instance types for nodes
+                          items:
+                            type: string
+                          default: ["t3.medium"]
+                        desiredSize:
+                          type: integer
+                          description: Desired number of nodes
+                          default: 2
+                        minSize:
+                          type: integer
+                          description: Minimum number of nodes
+                          default: 1
+                        maxSize:
+                          type: integer
+                          description: Maximum number of nodes
+                          default: 4
+                  required:
+                    - clusterName
+                    - region
+              required:
+                - parameters

@@ -1,0 +1,16 @@
+---
+# UPJET AWS EKS Provider
+# This provider enables EKS cluster management through Crossplane
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-upjet-aws-eks
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-eks:v1.6.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+  runtimeConfigRef:
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: DeploymentRuntimeConfig
+    name: aws-upbound-runtime-config

@@ -294,7 +294,8 @@ locals {
       "vpc",
       "apigateway",
       "cloudwatch",
-      "cloudwatchlogs"
+      "cloudwatchlogs",
+      "eks"
     ]
   }
 

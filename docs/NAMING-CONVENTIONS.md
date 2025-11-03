@@ -20,7 +20,7 @@ This document defines naming conventions for Crossplane resources in the Portal 
 | prod | `child-dev-account` | Cross-account via role chain to production |
 | management | `management-account` | Cross-account to management account |
 
-### Example: Account Selection Flow
+### Example: Accouent Selection Flow
 
 ```yaml
 # environments/dev/infrastructure/storage/my-bucket.yaml
