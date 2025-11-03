@@ -14,6 +14,7 @@ spec:
     encryption: AES256
     publicAccess: false
     environment: dev
+    providerConfig: default  # Explicitly set to match Crossplane default
 
   # This selects which Composition to use
   compositionSelector:
