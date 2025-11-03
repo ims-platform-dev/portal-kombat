@@ -18,7 +18,7 @@ spec:
   pipeline:
     - step: s3-bucket
       functionRef:
-        name: crossplane-contrib-function-patch-and-transform
+        name: function-patch-and-transform
       input:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
