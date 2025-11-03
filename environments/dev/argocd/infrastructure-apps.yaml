@@ -35,7 +35,7 @@ spec:
     - group: aws.plt.intelerad.io
       kind: ObjectStorage
       jsonPointers:
-        - /spec/providerConfig
+        - /spec/parameters/providerConfig
         - /spec/compositionRef
         - /spec/compositionRevisionRef
         - /spec/resourceRef
@@ -43,7 +43,7 @@ spec:
     - group: aws.plt.intelerad.io
       kind: EC2Instance
       jsonPointers:
-        - /spec/providerConfig
+        - /spec/parameters/providerConfig
         - /spec/compositionRef
         - /spec/compositionRevisionRef
         - /spec/resourceRef
