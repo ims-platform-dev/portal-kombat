@@ -67,9 +67,15 @@ spec:
                     matchControllerRef: true
                   versioningConfiguration:
                     - status: Enabled
+                  region: us-east-2
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch region from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
 
           # Server-Side Encryption (separate resource in UPJET)
           - name: bucket-encryption
@@ -83,9 +89,15 @@ spec:
                   rule:
                     - applyServerSideEncryptionByDefault:
                         - sseAlgorithm: AES256
+                  region: us-east-2
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch region from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
 
           # Public Access Block (separate resource in UPJET)
           - name: bucket-public-access-block
@@ -100,9 +112,15 @@ spec:
                   blockPublicPolicy: true
                   ignorePublicAcls: true
                   restrictPublicBuckets: true
+                  region: us-east-2
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch region from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
 
           # Lifecycle Configuration (separate resource in UPJET)
           - name: bucket-lifecycle
@@ -118,6 +136,12 @@ spec:
                       status: Enabled
                       abortIncompleteMultipartUpload:
                         - daysAfterInitiation: 7
+                  region: us-east-2
                 providerConfigRef:
                   name: default
                 deletionPolicy: Delete
+            patches:
+              # Patch region from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
