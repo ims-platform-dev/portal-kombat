@@ -11,290 +11,298 @@ spec:
   compositeTypeRef:
     apiVersion: aws.plt.intelerad.io/v1alpha1
     kind: XEKSCluster
-  resources:
-    - name: control-plane-role
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: Role
-        metadata:
-          labels:
-            portal-kombat.io/eks-role: controlplane
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            assumeRolePolicyDocument: |
-              {
-                "Version": "2012-10-17",
-                "Statement": [
-                  {
-                    "Effect": "Allow",
-                    "Principal": {
-                      "Service": "eks.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                  }
-                ]
-              }
-      patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.name
-          transforms:
-            - type: string
-              string:
-                fmt: "%s-control-plane"
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.annotations[crossplane.io/external-name]
-          transforms:
-            - type: string
-              string:
-                fmt: "%s-control-plane"
+  mode: Pipeline
+  pipeline:
+    - step: eks-cluster-resources
+      functionRef:
+        name: crossplane-contrib-function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+              - name: control-plane-role
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: Role
+                  metadata:
+                    labels:
+                      portal-kombat.io/eks-role: controlplane
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      assumeRolePolicyDocument: |
+                        {
+                          "Version": "2012-10-17",
+                          "Statement": [
+                            {
+                              "Effect": "Allow",
+                              "Principal": {
+                                "Service": "eks.amazonaws.com"
+                              },
+                              "Action": "sts:AssumeRole"
+                            }
+                          ]
+                        }
+                patches:
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.clusterName
+                    toFieldPath: spec.forProvider.name
+                    transforms:
+                      - type: string
+                        string:
+                          fmt: "%s-control-plane"
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.clusterName
+                    toFieldPath: metadata.annotations[crossplane.io/external-name]
+                    transforms:
+                      - type: string
+                        string:
+                          fmt: "%s-control-plane"
 
-    - name: control-plane-policy-cluster
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: controlplane
+              - name: control-plane-policy-cluster
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: controlplane
 
-    - name: control-plane-policy-service
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEKSServicePolicy
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: controlplane
+              - name: control-plane-policy-service
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: controlplane
 
-    - name: control-plane-policy-vpcresource
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: controlplane
+              - name: control-plane-policy-vpcresource
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: controlplane
 
-    - name: node-role
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: Role
-        metadata:
-          labels:
-            portal-kombat.io/eks-role: nodegroup
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            assumeRolePolicyDocument: |
-              {
-                "Version": "2012-10-17",
-                "Statement": [
-                  {
-                    "Effect": "Allow",
-                    "Principal": {
-                      "Service": "ec2.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                  }
-                ]
-              }
-      patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.name
-          transforms:
-            - type: string
-              string:
-                fmt: "%s-node-group"
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.annotations[crossplane.io/external-name]
-          transforms:
-            - type: string
-              string:
-                fmt: "%s-node-group"
+              - name: node-role
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: Role
+                  metadata:
+                    labels:
+                      portal-kombat.io/eks-role: nodegroup
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      assumeRolePolicyDocument: |
+                        {
+                          "Version": "2012-10-17",
+                          "Statement": [
+                            {
+                              "Effect": "Allow",
+                              "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                              },
+                              "Action": "sts:AssumeRole"
+                            }
+                          ]
+                        }
+                patches:
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.clusterName
+                    toFieldPath: spec.forProvider.name
+                    transforms:
+                      - type: string
+                        string:
+                          fmt: "%s-node-group"
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.clusterName
+                    toFieldPath: metadata.annotations[crossplane.io/external-name]
+                    transforms:
+                      - type: string
+                        string:
+                          fmt: "%s-node-group"
 
-    - name: node-policy-worker
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: nodegroup
+              - name: node-policy-worker
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: nodegroup
 
-    - name: node-policy-cni
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: nodegroup
+              - name: node-policy-cni
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: nodegroup
 
-    - name: node-policy-ecr
-      base:
-        apiVersion: iam.aws.upbound.io/v1beta1
-        kind: RolePolicyAttachment
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-            roleNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: nodegroup
+              - name: node-policy-ecr
+                base:
+                  apiVersion: iam.aws.upbound.io/v1beta1
+                  kind: RolePolicyAttachment
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+                      roleNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: nodegroup
 
-    - name: eks-cluster
-      base:
-        apiVersion: eks.aws.upbound.io/v1beta1
-        kind: Cluster
-        metadata:
-          labels:
-            portal-kombat.io/eks-resource: cluster
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            region: us-east-2
-            roleArnSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: controlplane
-            resourcesVpcConfig:
-              endpointPrivateAccess: false
-              endpointPublicAccess: true
-              subnetIds: []
-          writeConnectionSecretToRef:
-            namespace: crossplane-system
-            name: placeholder
-      patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.name
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.version
-          toFieldPath: spec.forProvider.version
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.vpcConfig.subnetIds
-          toFieldPath: spec.forProvider.resourcesVpcConfig.subnetIds
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.writeConnectionSecretToRef.name
-          toFieldPath: spec.writeConnectionSecretToRef.name
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.writeConnectionSecretToRef.namespace
-          toFieldPath: spec.writeConnectionSecretToRef.namespace
-          policy:
-            fromFieldPath: Optional
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.identity.oidc.issuer
-          toFieldPath: status.oidcIssuerUrl
-          policy:
-            toFieldPath: Optional
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.arn
-          toFieldPath: status.clusterRoleArn
-          policy:
-            toFieldPath: Optional
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.name
-          toFieldPath: status.clusterName
-          policy:
-            toFieldPath: Optional
+              - name: eks-cluster
+                base:
+                  apiVersion: eks.aws.upbound.io/v1beta1
+                  kind: Cluster
+                  metadata:
+                    labels:
+                      portal-kombat.io/eks-resource: cluster
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      region: us-east-2
+                      roleArnSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: controlplane
+                      resourcesVpcConfig:
+                        endpointPrivateAccess: false
+                        endpointPublicAccess: true
+                        subnetIds: []
+                    writeConnectionSecretToRef:
+                      namespace: crossplane-system
+                      name: placeholder
+                patches:
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.clusterName
+                    toFieldPath: spec.forProvider.name
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.region
+                    toFieldPath: spec.forProvider.region
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.version
+                    toFieldPath: spec.forProvider.version
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.vpcConfig.subnetIds
+                    toFieldPath: spec.forProvider.resourcesVpcConfig.subnetIds
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.writeConnectionSecretToRef.name
+                    toFieldPath: spec.writeConnectionSecretToRef.name
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                    toFieldPath: spec.writeConnectionSecretToRef.namespace
+                    policy:
+                      fromFieldPath: Optional
+                  - type: ToCompositeFieldPath
+                    fromFieldPath: status.atProvider.identity.oidc.issuer
+                    toFieldPath: status.oidcIssuerUrl
+                    policy:
+                      toFieldPath: Optional
+                  - type: ToCompositeFieldPath
+                    fromFieldPath: status.atProvider.arn
+                    toFieldPath: status.clusterRoleArn
+                    policy:
+                      toFieldPath: Optional
+                  - type: ToCompositeFieldPath
+                    fromFieldPath: status.atProvider.name
+                    toFieldPath: status.clusterName
+                    policy:
+                      toFieldPath: Optional
 
-    - name: eks-nodegroup
-      base:
-        apiVersion: eks.aws.upbound.io/v1beta1
-        kind: NodeGroup
-        metadata:
-          labels:
-            portal-kombat.io/eks-resource: nodegroup
-        spec:
-          providerConfigRef:
-            name: default
-          forProvider:
-            region: us-east-2
-            clusterNameSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-resource: cluster
-            nodeRoleSelector:
-              matchControllerRef: true
-              matchLabels:
-                portal-kombat.io/eks-role: nodegroup
-            subnetIds: []
-            scalingConfig:
-              desiredSize: 2
-              maxSize: 4
-              minSize: 1
-            instanceTypes:
-              - t3.medium
-      patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.nodeGroupConfig.instanceTypes
-          toFieldPath: spec.forProvider.instanceTypes
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.nodeGroupConfig.desiredSize
-          toFieldPath: spec.forProvider.scalingConfig.desiredSize
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.nodeGroupConfig.minSize
-          toFieldPath: spec.forProvider.scalingConfig.minSize
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.nodeGroupConfig.maxSize
-          toFieldPath: spec.forProvider.scalingConfig.maxSize
-          policy:
-            fromFieldPath: Optional
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.vpcConfig.subnetIds
-          toFieldPath: spec.forProvider.subnetIds
+              - name: eks-nodegroup
+                base:
+                  apiVersion: eks.aws.upbound.io/v1beta1
+                  kind: NodeGroup
+                  metadata:
+                    labels:
+                      portal-kombat.io/eks-resource: nodegroup
+                  spec:
+                    providerConfigRef:
+                      name: default
+                    forProvider:
+                      region: us-east-2
+                      clusterNameSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-resource: cluster
+                      nodeRoleSelector:
+                        matchControllerRef: true
+                        matchLabels:
+                          portal-kombat.io/eks-role: nodegroup
+                      subnetIds: []
+                      scalingConfig:
+                        desiredSize: 2
+                        maxSize: 4
+                        minSize: 1
+                      instanceTypes:
+                        - t3.medium
+                patches:
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.region
+                    toFieldPath: spec.forProvider.region
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.nodeGroupConfig.instanceTypes
+                    toFieldPath: spec.forProvider.instanceTypes
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.nodeGroupConfig.desiredSize
+                    toFieldPath: spec.forProvider.scalingConfig.desiredSize
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.nodeGroupConfig.minSize
+                    toFieldPath: spec.forProvider.scalingConfig.minSize
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.nodeGroupConfig.maxSize
+                    toFieldPath: spec.forProvider.scalingConfig.maxSize
+                    policy:
+                      fromFieldPath: Optional
+                  - type: FromCompositeFieldPath
+                    fromFieldPath: spec.parameters.vpcConfig.subnetIds
+                    toFieldPath: spec.forProvider.subnetIds
