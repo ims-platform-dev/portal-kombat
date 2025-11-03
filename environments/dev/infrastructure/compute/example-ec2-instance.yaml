@@ -1,0 +1,22 @@
+---
+# Example: Claim an EC2 instance using the platform API
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: EC2Instance
+metadata:
+  name: portal-kombat-dev-app-server
+  namespace: default
+spec:
+  parameters:
+    region: us-east-2
+    amiId: ami-0abcdef1234567890
+    instanceType: t3.small
+    subnetId: subnet-0123456789abcdef0
+    securityGroupIds:
+      - sg-0123456789abcdef0
+    associatePublicIp: true
+    keyName: portal-kombat-dev-key
+    rootVolumeSizeGiB: 30
+    environment: dev
+  writeConnectionSecretToRef:
+    name: portal-kombat-dev-app-server-connection
+    namespace: default

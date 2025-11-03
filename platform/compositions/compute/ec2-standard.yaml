@@ -1,0 +1,94 @@
+---
+# Composition for provisioning a single EC2 instance with basic tagging
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: ec2instance-standard
+  labels:
+    crossplane.io/xrd: xec2instances.aws.plt.intelerad.io
+    instance-type: standard
+spec:
+  compositeTypeRef:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    kind: XEC2Instance
+  resources:
+    - name: ec2-instance
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: Instance
+        spec:
+          providerConfigRef:
+            name: default
+          forProvider:
+            region: us-east-2
+            ami: ami-083b3f53cbda7e5a4
+            instanceType: t3.micro
+            subnetId: subnet-02ea545b58c156d69
+            associatePublicIpAddress: true
+            securityGroupIds: []
+            rootBlockDevice:
+              - deleteOnTermination: true
+                encrypted: true
+                volumeSize: 20
+                volumeType: gp3
+            tags:
+              - key: CodeManaged
+                value: true
+              - key: Project
+                value: portal-kombat
+              - key: Environment
+                value: dev
+              - key: crossplane 
+                value: true
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.amiId
+          toFieldPath: spec.forProvider.ami
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceType
+          toFieldPath: spec.forProvider.instanceType
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.subnetId
+          toFieldPath: spec.forProvider.subnetId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.securityGroupIds
+          toFieldPath: spec.forProvider.securityGroupIds
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.associatePublicIp
+          toFieldPath: spec.forProvider.associatePublicIpAddress
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.keyName
+          toFieldPath: spec.forProvider.keyName
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.rootVolumeSizeGiB
+          toFieldPath: spec.forProvider.rootBlockDevice[0].volumeSize
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags[2].value
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.writeConnectionSecretToRef.name
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          policy:
+            fromFieldPath: Optional
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.writeConnectionSecretToRef.namespace
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+          policy:
+            fromFieldPath: Optional

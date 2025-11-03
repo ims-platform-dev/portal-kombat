@@ -1,0 +1,69 @@
+---
+# XRD for requesting EC2 instances via Crossplane
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xec2instances.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XEC2Instance
+    plural: xec2instances
+  claimNames:
+    kind: EC2Instance
+    plural: ec2instances
+  defaultCompositionRef:
+    name: ec2instance-standard
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: EC2 instance parameters
+                  properties:
+                    region:
+                      type: string
+                      description: AWS region for the instance
+                      default: us-east-2
+                    instanceType:
+                      type: string
+                      description: EC2 instance type
+                      default: t3.micro
+                    amiId:
+                      type: string
+                      description: AMI identifier to launch
+                    subnetId:
+                      type: string
+                      description: Subnet ID where the instance will run
+                    securityGroupIds:
+                      type: array
+                      description: Security groups to attach to the instance
+                      items:
+                        type: string
+                    associatePublicIp:
+                      type: boolean
+                      description: Associate a public IP with the primary network interface
+                      default: true
+                    keyName:
+                      type: string
+                      description: EC2 key pair name for SSH access
+                    rootVolumeSizeGiB:
+                      type: integer
+                      description: Size of the root EBS volume in GiB
+                      default: 20
+                    environment:
+                      type: string
+                      description: Environment tag value
+                  required:
+                    - amiId
+                    - subnetId
+              required:
+                - parameters
