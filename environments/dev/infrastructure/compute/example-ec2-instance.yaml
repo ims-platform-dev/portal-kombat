@@ -18,4 +18,3 @@ spec:
     environment: dev
   writeConnectionSecretToRef:
     name: portal-kombat-dev-app-server-connection
-    namespace: default
