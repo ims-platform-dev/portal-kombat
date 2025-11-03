@@ -55,6 +55,10 @@ spec:
                     environment:
                       type: string
                       description: Environment tag (dev, staging, prod)
+                    providerConfig:
+                      type: string
+                      description: Name of ProviderConfig for cross-account access (optional, defaults to 'default')
+                      default: default
                   required:
                     - bucketName
                     - region

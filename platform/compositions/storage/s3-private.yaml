@@ -55,6 +55,12 @@ spec:
                 toFieldPath: spec.forProvider.tags.Environment
                 policy:
                   fromFieldPath: Optional
+              # Patch provider config from claim to s3-bucket resource
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
 
           # Bucket Versioning (separate resource in UPJET)
           - name: bucket-versioning
@@ -76,6 +82,12 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # Patch provider config from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
 
           # Server-Side Encryption (separate resource in UPJET)
           - name: bucket-encryption
@@ -98,6 +110,12 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # Patch provider config from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
 
           # Public Access Block (separate resource in UPJET)
           - name: bucket-public-access-block
@@ -121,6 +139,12 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # Patch provider config from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
 
           # Lifecycle Configuration (separate resource in UPJET)
           - name: bucket-lifecycle
@@ -145,3 +169,9 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # Patch provider config from claim
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
