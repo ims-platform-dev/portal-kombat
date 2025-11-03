@@ -33,21 +33,16 @@ spec:
                   instanceType: t3.micro
                   subnetId: subnet-02ea545b58c156d69
                   associatePublicIpAddress: true
-                  securityGroupIds: []
+                  vpcSecurityGroupIds: []
                   rootBlockDevice:
                     - deleteOnTermination: true
                       encrypted: true
                       volumeSize: 20
                       volumeType: gp3
                   tags:
-                    - key: CodeManaged
-                      value: true
-                    - key: Project
-                      value: portal-kombat
-                    - key: Environment
-                      value: dev
-                    - key: crossplane
-                      value: true
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
@@ -67,7 +62,7 @@ spec:
                 toFieldPath: spec.forProvider.subnetId
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.securityGroupIds
-                toFieldPath: spec.forProvider.securityGroupIds
+                toFieldPath: spec.forProvider.vpcSecurityGroupIds
                 policy:
                   fromFieldPath: Optional
               - type: FromCompositeFieldPath
@@ -87,7 +82,7 @@ spec:
                   fromFieldPath: Optional
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.environment
-                toFieldPath: spec.forProvider.tags[2].value
+                toFieldPath: spec.forProvider.tags.Environment
                 policy:
                   fromFieldPath: Optional
               - type: FromCompositeFieldPath
