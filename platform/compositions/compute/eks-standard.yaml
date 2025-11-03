@@ -9,7 +9,7 @@ metadata:
     cluster-type: standard
 spec:
   compositeTypeRef:
-  apiVersion: aws.plt.intelerad.io/v1alpha1
+    apiVersion: aws.plt.intelerad.io/v1alpha1
     kind: XEKSCluster
   resources:
     - name: control-plane-role
@@ -246,14 +246,14 @@ spec:
       base:
         apiVersion: eks.aws.upbound.io/v1beta1
         kind: NodeGroup
-  metadata:
+        metadata:
           labels:
             portal-kombat.io/eks-resource: nodegroup
-  spec:
+        spec:
           providerConfigRef:
             name: default
           forProvider:
-      region: us-east-2
+            region: us-east-2
             clusterNameSelector:
               matchControllerRef: true
               matchLabels:
