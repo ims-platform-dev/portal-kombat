@@ -1,15 +1,15 @@
-# Enable feature flags for EnvironmentConfigs and composition functions
+# Crossplane v2.0.2 Configuration
+# EnvironmentConfigs and Composition Functions are GA in v2.0 - no feature flags needed
+# DeploymentRuntimeConfig is GA in v2.0 - no feature flag needed
+
 metrics:
   enabled: true
 
 args:
-  # Beta features (from Crossplane 2.0.2 --help, these flags actually exist)
-  - '--enable-realtime-compositions'        # Watch composed resources and reconcile immediately (great for GitOps)
-  - '--enable-ssa-claims'                   # Use server-side apply for claims (recommended for K8s 1.22+)
-  - '--enable-usages'                       # Enable deletion ordering and resource protection
-  - '--enable-deployment-runtime-configs'   # Enable DeploymentRuntimeConfig (required for your runtime configs)
-
-  # Note: EnvironmentConfigs and composition Functions are GA in 2.0.2 and don't need feature flags
+  # Beta features (enabled for enhanced GitOps workflows and resource protection)
+  - '--enable-realtime-compositions'        # Beta: Watch composed resources and reconcile immediately (great for GitOps)
+  - '--enable-ssa-claims'                   # Beta: Use server-side apply for claims (recommended for K8s 1.22+)
+  - '--enable-usages'                       # Beta: Enable deletion ordering and resource protection
 
 resourcesCrossplane:
   limits:

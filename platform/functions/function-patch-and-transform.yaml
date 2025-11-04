@@ -1,0 +1,13 @@
+---
+# Crossplane Composition Function: Patch and Transform
+# This function enables pipeline-based compositions with patching and transformation capabilities
+# Required by all compositions using mode: Pipeline with functionRef: function-patch-and-transform
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.6.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1

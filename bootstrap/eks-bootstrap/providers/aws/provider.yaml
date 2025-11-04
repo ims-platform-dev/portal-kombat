@@ -1,3 +1,5 @@
+# AWS Provider (legacy monolithic provider - consider using family providers instead)
+# Updated to latest stable version compatible with Crossplane v2.0+
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
