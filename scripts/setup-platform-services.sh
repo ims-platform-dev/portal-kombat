@@ -228,7 +228,7 @@ else
         --targets "Id=1,Arn=${QUEUE_ARN}" || true
 
     # Add SQS policy
-    cat > /tmp/sqs-policy.json <<EOF
+    POLICY_JSON=$(cat <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -243,10 +243,11 @@ else
   ]
 }
 EOF
+)
 
     aws sqs set-queue-attributes \
         --queue-url ${QUEUE_URL} \
-        --attributes "Policy=$(cat /tmp/sqs-policy.json | jq -c .)"
+        --attributes "{\"Policy\":\"$(echo $POLICY_JSON | jq -c . | sed 's/"/\\"/g')\"}"
 
     echo -e "${GREEN}✓ SQS queue and EventBridge rules created${NC}"
 fi
@@ -300,7 +301,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Deploying Platform Services via ArgoCD${NC}"
 echo ""
 
-kubectl apply -f environments/dev/argocd/platform-services-app.yaml
+kubectl apply -f environments/dev/argocd/k8s-platform-services-apps.yaml
 
 echo -e "${GREEN}✓ ArgoCD application created${NC}"
 echo ""
