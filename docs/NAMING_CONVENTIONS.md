@@ -246,6 +246,53 @@ done
 echo "✅ Naming validation complete"
 ```
 
+### Optional: Pre-Commit Hook
+
+For enhanced workflow efficiency, you can install the naming validation script as a Git pre-commit hook. This will automatically validate naming conventions before each commit.
+
+#### Installation
+
+The validation script is available at `scripts/pre-commit-naming-validation.sh`. To install it as a pre-commit hook:
+
+```bash
+# From the repository root
+ln -s ../../scripts/pre-commit-naming-validation.sh .git/hooks/pre-commit
+```
+
+#### Verification
+
+Test the hook is installed correctly:
+
+```bash
+# The hook should run automatically on commit, but you can test it manually:
+./scripts/pre-commit-naming-validation.sh
+```
+
+#### What It Checks
+
+The pre-commit hook validates:
+1. App-of-apps files use plural `-apps.yaml` suffix
+2. App-of-apps filenames match standard patterns
+3. Application names include environment prefixes
+4. No deprecated patterns (e.g., `root-app.yaml`)
+5. No redundant naming patterns (e.g., `application-apps.yaml`)
+
+#### Hook Behavior
+
+- **Critical errors**: Block the commit (exit code 1)
+- **Warnings**: Display message but allow commit (exit code 0)
+- **Success**: Silent operation with success message
+
+#### Bypassing the Hook
+
+If you need to bypass the hook for a specific commit (not recommended):
+
+```bash
+git commit --no-verify -m "Commit message"
+```
+
+**Note**: Installing the pre-commit hook is optional but recommended for maintaining naming consistency across the team. The validation script can also be run manually at any time.
+
 ## Application Hierarchy
 
 The standardized naming creates a clear four-layer hierarchy:
