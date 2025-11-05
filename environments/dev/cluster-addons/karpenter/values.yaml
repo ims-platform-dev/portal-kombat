@@ -9,49 +9,42 @@ serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/karpenter_controller_role-raiden-control-plane
 
-  # Controller configuration
-  controller:
-    resources:
-      requests:
-        cpu: 1
-        memory: 1Gi
-      limits:
-        cpu: 2
-        memory: 2Gi
+# High availability
+replicas: 2
 
-    # High availability
-    replicas: 2
+# Controller configuration
+controller:
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 2Gi
 
-    # Affinity for controller pods
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: karpenter.sh/controller
-              operator: DoesNotExist
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: karpenter
-            topologyKey: kubernetes.io/hostname
+# Affinity for controller pods
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: karpenter.sh/controller
+          operator: DoesNotExist
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: karpenter
+        topologyKey: kubernetes.io/hostname
 
-    # Prevent karpenter from scaling down nodes with karpenter pods
-    tolerations:
-    - key: CriticalAddonsOnly
-      operator: Exists
+# Prevent karpenter from scaling down nodes with karpenter pods
+tolerations:
+- key: CriticalAddonsOnly
+  operator: Exists
 
-  # Metrics
-  metrics:
-    enabled: true
-
-  # Webhook
-  webhook:
-    enabled: true
-    port: 8443
-
-  # Log level
-  logLevel: info
+# Webhook
+webhook:
+  enabled: true
+  port: 8443
