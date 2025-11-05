@@ -1,0 +1,29 @@
+---
+# Root Application (App of Apps) for Dev Environment
+# This is the entry point that deploys everything in dev
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-root-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: environments/dev/argocd
+    directory:
+      recurse: false
+      # RBAC managed separately - see rbac-app.yaml
+      include: '{crossplane-platform-apps.yaml,infrastructure-claims-apps.yaml,k8s-platform-services-apps.yaml,workloads-apps.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

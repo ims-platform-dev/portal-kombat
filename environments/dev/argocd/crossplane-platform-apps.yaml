@@ -1,0 +1,69 @@
+---
+# Crossplane Platform Components (XRDs, Compositions, Functions)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-crossplane-platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  # Deploy after Crossplane core installation
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: infra-definitions
+    directory:
+      recurse: true
+      exclude: 'providers/*.yaml'  # Providers managed by Terraform, not ArgoCD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+---
+# Crossplane Provider Packages
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-crossplane-providers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # Deploy before platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: infra-definitions/providers
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

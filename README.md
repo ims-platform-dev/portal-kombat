@@ -34,6 +34,17 @@ Portal Kombat is a **GitOps-native infrastructure platform** that enables teams 
 - 🔒 **Maintain security** with IRSA (IAM Roles for Service Accounts)
 - 📦 **Define platform abstractions** for consistent, reusable infrastructure
 
+### ArgoCD Application Structure
+
+This repository follows standardized naming conventions for GitOps with ArgoCD:
+
+- **App-of-Apps Pattern**: Hierarchical application management with clear parent-child relationships
+- **Clear Layer Separation**: `crossplane-`, `k8s-`, `infrastructure-`, and workload layers
+- **Self-Documenting Names**: Purpose and scope evident from application and file names
+- **Sync Wave Ordering**: Explicit dependency management ensuring correct deployment order
+
+See [docs/NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md) for detailed naming guidelines and best practices.
+
 ### Why Portal Kombat?
 
 **Traditional Infrastructure**:
@@ -95,7 +106,7 @@ Git Commit → ArgoCD Sync → Crossplane → AWS Resources
 ### Design Philosophy
 
 1. **Environment-First**: All environment-specific resources live under `environments/{env}/`
-2. **Platform Abstraction**: Infrastructure capabilities defined once in `platform/`, used everywhere
+2. **Platform Abstraction**: Infrastructure capabilities defined once in `infra-definitions/`, used everywhere
 3. **GitOps Native**: Every change flows through Git → ArgoCD → Kubernetes
 4. **Declarative Everything**: Desired state in Git, reconciled continuously
 
@@ -166,7 +177,7 @@ provider-aws-rds        True      1          5m
 
 ```
 portal-kombat/
-├── platform/                    # Platform layer (environment-agnostic)
+├── infra-definitions/          # Infrastructure definitions (environment-agnostic)
 │   ├── providers/              # Crossplane provider installations
 │   │   └── aws-provider.yaml   # AWS provider packages (s3, ec2, eks, iam, rds)
 │   ├── xrds/                   # Custom resource definitions (APIs)
@@ -183,18 +194,20 @@ portal-kombat/
 ├── environments/               # Environment-specific configurations
 │   └── dev/                   # Development environment
 │       ├── argocd/            # ArgoCD Applications
-│       │   ├── root-app.yaml           # Entry point (App of Apps)
-│       │   ├── platform-apps.yaml      # Deploys Crossplane
-│       │   ├── infrastructure-apps.yaml # Deploys infra claims
-│       │   └── workload-apps.yaml      # Deploys applications
+│       │   ├── root-apps.yaml                # Entry point (App of Apps)
+│       │   ├── crossplane-platform-apps.yaml # Deploys Crossplane
+│       │   ├── infrastructure-claims-apps.yaml # Deploys infra claims
+│       │   └── workloads-apps.yaml           # Deploys applications
 │       ├── infrastructure/    # Infrastructure claims
 │       │   ├── network/       # Dev VPCs, subnets
 │       │   ├── compute/       # Dev EKS clusters
 │       │   ├── storage/       # Dev S3 buckets
 │       │   └── database/      # Dev RDS instances
-│       ├── platform/          # Platform services for dev
-│       │   ├── monitoring/    # Prometheus, Grafana
-│       │   └── ingress/       # Ingress controllers
+│       ├── cluster-addons/    # Cluster services for dev
+│       │   ├── cert-manager/  # Certificate management
+│       │   ├── external-dns/  # DNS automation
+│       │   ├── nginx-ingress/ # Ingress controller
+│       │   └── karpenter/     # Node autoscaling
 │       └── workloads/         # Application workloads
 │           └── s3reader/      # Example application
 │
@@ -245,18 +258,21 @@ portal-kombat/
 ### ArgoCD App of Apps Pattern
 
 ```
-root-app.yaml (Entry Point)
-    ├── platform-apps.yaml → Deploys Crossplane + Providers
-    │   └── platform/ directory
+root-apps.yaml (Entry Point)
+    ├── crossplane-platform-apps.yaml → Deploys Crossplane + Providers
+    │   └── infra-definitions/ directory
     │       ├── providers/
     │       ├── xrds/
     │       └── compositions/
     │
-    ├── infrastructure-apps.yaml → Deploys Infrastructure Claims
+    ├── infrastructure-claims-apps.yaml → Deploys Infrastructure Claims
     │   ├── environments/dev/infrastructure/
     │   └── shared/configs/provider-configs/
     │
-    └── workload-apps.yaml → Deploys Applications
+    ├── k8s-platform-services-apps.yaml → Deploys Cluster Services
+    │   └── environments/dev/cluster-addons/
+    │
+    └── workloads-apps.yaml → Deploys Applications
         └── environments/dev/workloads/
 ```
 
@@ -264,7 +280,7 @@ root-app.yaml (Entry Point)
 
 **Step 1: Define an API (XRD)**
 ```yaml
-# platform/xrds/storage/xrd-s3-bucket.yaml
+# infra-definitions/xrds/storage/xrd-s3-bucket.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -287,7 +303,7 @@ spec:
 
 **Step 2: Implement the API (Composition)**
 ```yaml
-# platform/compositions/storage/s3-private.yaml
+# infra-definitions/compositions/storage/s3-private.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:

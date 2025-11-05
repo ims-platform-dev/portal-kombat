@@ -10,7 +10,7 @@ Portal Kombat is a GitOps-native infrastructure platform using **Crossplane** an
 
 ### Three-Layer Structure
 
-1. **Platform Layer** (`platform/`): Environment-agnostic infrastructure capabilities
+1. **Infrastructure Definitions Layer** (`infra-definitions/`): Environment-agnostic infrastructure capabilities
    - **XRDs** (CompositeResourceDefinitions): Define user-facing APIs for infrastructure
    - **Compositions**: Implement XRDs with actual AWS resources
    - **Providers**: Crossplane provider packages (AWS S3, EC2, EKS, IAM, RDS)
@@ -18,7 +18,7 @@ Portal Kombat is a GitOps-native infrastructure platform using **Crossplane** an
 2. **Environment Layer** (`environments/{env}/`): Environment-specific configurations
    - `argocd/`: ArgoCD Applications using App-of-Apps pattern
    - `infrastructure/`: Claims that use platform XRDs to request resources
-   - `platform/`: Environment-specific platform services (monitoring, ingress)
+   - `cluster-addons/`: Environment-specific cluster services (cert-manager, external-dns, nginx-ingress, karpenter)
    - `workloads/`: Application deployments
 
 3. **Shared Layer** (`shared/`): Cross-environment resources
@@ -39,7 +39,7 @@ ArgoCD watches Git and automatically deploys changes. Crossplane reconciles Kube
 
 ```bash
 # Deploy root application (initial setup)
-kubectl apply -f environments/dev/argocd/root-app.yaml
+kubectl apply -f environments/dev/argocd/root-apps.yaml
 
 # Check application sync status
 kubectl get applications -n argocd
@@ -48,7 +48,7 @@ kubectl get applications -n argocd
 kubectl get applications -n argocd -w
 
 # Force sync an application
-kubectl patch application dev-platform-crossplane -n argocd \
+kubectl patch application dev-crossplane-platform -n argocd \
   --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{}}}'
 
 # Get ArgoCD admin password
@@ -155,16 +155,53 @@ spec:
 
 ### ArgoCD App-of-Apps Pattern
 
-The repository uses a hierarchical application structure:
+The repository uses a hierarchical application structure with standardized naming conventions:
 
 ```
-root-app.yaml (Entry Point)
-  ├── platform-apps.yaml → Deploys Crossplane providers, XRDs, Compositions
-  ├── infrastructure-apps.yaml → Deploys infrastructure claims and provider configs
-  └── workload-apps.yaml → Deploys application workloads
+root-apps.yaml (Entry Point)
+  ├── crossplane-platform-apps.yaml → Deploys Crossplane XRDs, Compositions, Providers
+  ├── infrastructure-claims-apps.yaml → Deploys infrastructure claims and provider configs
+  ├── k8s-platform-services-apps.yaml → Deploys Kubernetes cluster services
+  └── workloads-apps.yaml → Deploys application workloads
 ```
 
 Sync order is automatically managed by ArgoCD based on dependencies.
+
+### ArgoCD Application Organization
+
+Portal Kombat uses a four-layer hierarchical app-of-apps pattern:
+
+**Root Application**: `environments/dev/argocd/root-apps.yaml`
+- Entry point that deploys all child app-of-apps applications
+- Application name: `dev-root-apps`
+
+**Layer 1: Crossplane Platform** (`crossplane-platform-apps.yaml`)
+- Deploys XRDs, Compositions, and Functions from `/platform`
+- Deploys additional Provider packages from `/platform/providers`
+- Applications:
+  - `dev-crossplane-platform` (sync-wave: 0) - XRDs and Compositions
+  - `dev-crossplane-providers` (sync-wave: -1) - Provider packages
+
+**Layer 2: Infrastructure** (`infrastructure-claims-apps.yaml`)
+- Deploys infrastructure resource claims from `/environments/dev/infrastructure`
+- Deploys provider authentication configs from `/shared/configs/provider-configs`
+- Applications:
+  - `dev-infrastructure-claims` - S3 buckets, RDS databases, VPCs, networking
+  - `dev-provider-configs` - AWS authentication via IRSA
+
+**Layer 3: Kubernetes Platform Services** (`k8s-platform-services-apps.yaml`)
+- Deploys cluster add-ons: cert-manager, external-dns, nginx-ingress, karpenter
+- Applications:
+  - `dev-k8s-cert-manager` (sync-wave: 10) - Certificate management
+  - `dev-k8s-external-dns` (sync-wave: 20) - DNS automation
+  - `dev-k8s-nginx-ingress` (sync-wave: 30) - Ingress controller
+  - `dev-k8s-karpenter` (sync-wave: 40) - Node autoscaling
+
+**Layer 4: Workloads** (`workloads-apps.yaml`)
+- Deploys applications from `/environments/dev/workloads`
+- Applications: `dev-{app-name}` (e.g., `dev-s3reader`)
+
+For detailed naming conventions and guidelines, see [docs/NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md).
 
 ## Adding New Resources
 
@@ -182,7 +219,7 @@ cp shared/configs/provider-configs/dev-account.yaml \
    shared/configs/provider-configs/staging-account.yaml
 
 # 4. Deploy
-kubectl apply -f environments/staging/argocd/root-app.yaml
+kubectl apply -f environments/staging/argocd/root-apps.yaml
 ```
 
 ### Adding a New XRD and Composition
@@ -235,10 +272,10 @@ kubectl get bucket my-bucket-name -o jsonpath='{.status.conditions}'
 
 ```bash
 # Check application status
-kubectl get application dev-platform-crossplane -n argocd -o yaml
+kubectl get application dev-crossplane-platform -n argocd -o yaml
 
 # Force sync
-kubectl patch application dev-platform-crossplane -n argocd \
+kubectl patch application dev-crossplane-platform -n argocd \
   --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{}}}'
 ```
 
@@ -278,6 +315,23 @@ tags:
 - IAM role: `crossplane-sa-role` needs appropriate permissions
 - Never commit AWS credentials or secrets to Git
 
+### RBAC Management
+
+RBAC (Role-Based Access Control) is managed separately from the standard app-of-apps pattern for security best practices:
+
+```bash
+# Apply RBAC manually (security best practice)
+kubectl apply -f environments/dev/argocd/rbac-app.yaml
+```
+
+**Rationale for Separate Management**:
+- RBAC changes are security-critical and require explicit review
+- Prevents accidental RBAC modifications through automated sync
+- Allows cluster-wide RBAC policies to be audited independently
+- RBAC applies across all environments, not environment-specific
+
+RBAC changes should never be auto-synced and require manual approval for security compliance.
+
 ## Bootstrap Process
 
 For initial cluster setup:
@@ -288,10 +342,21 @@ kubectl apply -f bootstrap/crossplane/install.yaml
 kubectl wait --for=condition=ready pod -l app=crossplane -n crossplane-system --timeout=300s
 
 # 2. Deploy root ArgoCD application
-kubectl apply -f environments/dev/argocd/root-app.yaml
+kubectl apply -f environments/dev/argocd/root-apps.yaml
 
 # 3. Watch deployment
 kubectl get applications -n argocd -w
+
+# Expected output should show:
+# dev-root-apps              Synced   Healthy
+# dev-crossplane-providers   Synced   Healthy
+# dev-crossplane-platform    Synced   Healthy
+# dev-infrastructure-claims  Synced   Healthy
+# dev-provider-configs       Synced   Healthy
+# dev-k8s-cert-manager      Synced   Healthy
+# dev-k8s-external-dns      Synced   Healthy
+# dev-k8s-nginx-ingress     Synced   Healthy
+# dev-k8s-karpenter         Synced   Healthy
 
 # 4. Verify providers
 kubectl get providers
@@ -304,6 +369,7 @@ See `bootstrap/crossplane/crossplane.sh` for detailed bootstrap script (referenc
 
 ## Additional Documentation
 
+- `docs/NAMING_CONVENTIONS.md`: ArgoCD application naming conventions and guidelines
 - `docs/ARCHITECTURE.md`: Detailed architecture documentation
 - `docs/QUICK-START.md`: Step-by-step quick start guide
 - `shared/managed-resources/iam-roles/iam-policies/SETUP-INSTRUCTIONS.md`: IAM configuration
