@@ -1,12 +1,9 @@
-karpenter:
-  # Settings
-  settings:
-    clusterName: raiden-control-plane
-    clusterEndpoint: https://31F74548D0C0D4910526F1FBE62C72B5.gr7.us-east-2.eks.amazonaws.com  
-    interruptionQueue: raiden-control-plane  # SQS queue name
+# Cluster configuration (required)
+clusterName: raiden-control-plane
+clusterEndpoint: https://31F74548D0C0D4910526F1FBE62C72B5.gr7.us-east-2.eks.amazonaws.com
 
-  # Service Account with IRSA
-  serviceAccount:
+# Service Account with IRSA
+serviceAccount:
     create: true
     name: karpenter
     annotations:
