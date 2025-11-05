@@ -33,6 +33,11 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    - group: s3.aws.upbound.io
+      kind: BucketLifecycleConfiguration
+      jsonPointers:
+        - /*
 ---
 # Crossplane Provider Packages
 apiVersion: argoproj.io/v1alpha1
