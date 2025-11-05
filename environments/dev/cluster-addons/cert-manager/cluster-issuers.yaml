@@ -58,7 +58,7 @@ spec:
         route53:
           region: us-east-2
           # TODO: Add your Route53 Hosted Zone ID here
-          # hostedZoneID: Z1234567890ABC
+          hostedZoneID: Z05914812OPX7495S4MSP
           # For IRSA authentication (recommended), cert-manager will use the service account's IAM role
           # The service account needs Route53 permissions: route53:GetChange, route53:ChangeResourceRecordSets, route53:ListHostedZonesByName
       selector:
