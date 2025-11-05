@@ -34,6 +34,17 @@ Portal Kombat is a **GitOps-native infrastructure platform** that enables teams 
 - 🔒 **Maintain security** with IRSA (IAM Roles for Service Accounts)
 - 📦 **Define platform abstractions** for consistent, reusable infrastructure
 
+### ArgoCD Application Structure
+
+This repository follows standardized naming conventions for GitOps with ArgoCD:
+
+- **App-of-Apps Pattern**: Hierarchical application management with clear parent-child relationships
+- **Clear Layer Separation**: `crossplane-`, `k8s-`, `infrastructure-`, and workload layers
+- **Self-Documenting Names**: Purpose and scope evident from application and file names
+- **Sync Wave Ordering**: Explicit dependency management ensuring correct deployment order
+
+See [docs/NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md) for detailed naming guidelines and best practices.
+
 ### Why Portal Kombat?
 
 **Traditional Infrastructure**:
