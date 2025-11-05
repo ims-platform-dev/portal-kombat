@@ -4,7 +4,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-root
+  name: dev-root-apps
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -16,7 +16,8 @@ spec:
     path: environments/dev/argocd
     directory:
       recurse: false
-      include: '{rbac-app.yaml,providers-app.yaml,platform-apps.yaml,provider-configs-app.yaml,infrastructure-apps.yaml}' #,workload-apps.yaml}'
+      # RBAC managed separately - see rbac-app.yaml
+      include: '{crossplane-platform-apps.yaml,infrastructure-claims-apps.yaml,k8s-platform-services-apps.yaml,workloads-apps.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

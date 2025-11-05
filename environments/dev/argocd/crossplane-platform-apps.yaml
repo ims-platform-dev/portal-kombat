@@ -1,9 +1,9 @@
 ---
-# Platform Applications (Crossplane, Monitoring, etc.)
+# Crossplane Platform Components (XRDs, Compositions, Functions)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-platform-crossplane
+  name: dev-crossplane-platform
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "0"  # Deploy after Crossplane core installation
@@ -33,26 +33,37 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-# ---
-# apiVersion: argoproj.io/v1alpha1
-# kind: Application
-# metadata:
-#   name: dev-platform-monitoring
-#   namespace: argocd
-#   finalizers:
-#     - resources-finalizer.argocd.argoproj.io
-# spec:
-#   project: default
-#   source:
-#     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
-#     targetRevision: main
-#     path: environments/dev/platform/monitoring
-#   destination:
-#     server: https://kubernetes.default.svc
-#     namespace: monitoring
-#   syncPolicy:
-#     automated:
-#       prune: true
-#       selfHeal: true
-#     syncOptions:
-#       - CreateNamespace=true
+---
+# Crossplane Provider Packages
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-crossplane-providers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # Deploy before platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: platform/providers
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

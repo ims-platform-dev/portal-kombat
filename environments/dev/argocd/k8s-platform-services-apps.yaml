@@ -6,7 +6,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-platform-cert-manager
+  name: dev-k8s-cert-manager
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "10"  # Deploy first
@@ -39,7 +39,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-platform-external-dns
+  name: dev-k8s-external-dns
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "20"  # After cert-manager
@@ -71,7 +71,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-platform-nginx-ingress
+  name: dev-k8s-nginx-ingress
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "30"  # After external-dns
@@ -103,7 +103,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-platform-karpenter
+  name: dev-k8s-karpenter
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "40"  # After nginx-ingress
