@@ -14,6 +14,11 @@ replicas: 2
 
 # Controller configuration
 controller:
+  env:
+  - name: CLUSTER_NAME
+    value: raiden-control-plane
+  - name: CLUSTER_ENDPOINT
+    value: https://31F74548D0C0D4910526F1FBE62C72B5.gr7.us-east-2.eks.amazonaws.com
   resources:
     requests:
       cpu: 1
