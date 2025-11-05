@@ -2,7 +2,7 @@ karpenter:
   # Settings
   settings:
     clusterName: raiden-control-plane
-    clusterEndpoint: https://31F74548D0C0D4910526F1FBE62C72B5.gr7.us-east-2.eks.amazonaws.com  # TODO: Get from `kubectl cluster-info`
+    clusterEndpoint: https://31F74548D0C0D4910526F1FBE62C72B5.gr7.us-east-2.eks.amazonaws.com  
     interruptionQueue: raiden-control-plane  # SQS queue name
 
   # Service Account with IRSA
@@ -10,7 +10,7 @@ karpenter:
     create: true
     name: karpenter
     annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/karpenter_controller_role
+      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/karpenter_controller_role-raiden-control-plane
 
   # Controller configuration
   controller:

@@ -103,10 +103,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - myapp.yourcompany.com
+    - myapp.plt-dev.inteleradhealth.com
     secretName: myapp-tls  # cert-manager will create this secret
   rules:
-  - host: myapp.yourcompany.com
+  - host: myapp.plt-dev.inteleradhealth.com
     http:
       paths:
       - path: /

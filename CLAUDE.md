@@ -10,7 +10,7 @@ Portal Kombat is a GitOps-native infrastructure platform using **Crossplane** an
 
 ### Three-Layer Structure
 
-1. **Platform Layer** (`platform/`): Environment-agnostic infrastructure capabilities
+1. **Infrastructure Definitions Layer** (`infra-definitions/`): Environment-agnostic infrastructure capabilities
    - **XRDs** (CompositeResourceDefinitions): Define user-facing APIs for infrastructure
    - **Compositions**: Implement XRDs with actual AWS resources
    - **Providers**: Crossplane provider packages (AWS S3, EC2, EKS, IAM, RDS)
@@ -18,7 +18,7 @@ Portal Kombat is a GitOps-native infrastructure platform using **Crossplane** an
 2. **Environment Layer** (`environments/{env}/`): Environment-specific configurations
    - `argocd/`: ArgoCD Applications using App-of-Apps pattern
    - `infrastructure/`: Claims that use platform XRDs to request resources
-   - `platform/`: Environment-specific platform services (monitoring, ingress)
+   - `cluster-addons/`: Environment-specific cluster services (cert-manager, external-dns, nginx-ingress, karpenter)
    - `workloads/`: Application deployments
 
 3. **Shared Layer** (`shared/`): Cross-environment resources

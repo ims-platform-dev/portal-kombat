@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
-    path: platform
+    path: infra-definitions
     directory:
       recurse: true
       exclude: 'providers/*.yaml'  # Providers managed by Terraform, not ArgoCD
@@ -49,7 +49,7 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
-    path: platform/providers
+    path: infra-definitions/providers
     directory:
       recurse: true
   destination:

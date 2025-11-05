@@ -21,7 +21,7 @@ external-dns:
     create: true
     name: external-dns
     annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/external-dns-role 
+      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/external-dns-role
 
   # Resource limits
   resources:
