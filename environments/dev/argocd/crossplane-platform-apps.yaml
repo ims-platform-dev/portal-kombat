@@ -17,7 +17,7 @@ spec:
     path: infra-definitions
     directory:
       recurse: true
-      exclude: 'providers/*.yaml'  # Providers managed by Terraform, not ArgoCD
+      exclude: '{providers/*.yaml,shared/**,**/*.json}'  # Exclude providers, shared resources, and JSON files
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
