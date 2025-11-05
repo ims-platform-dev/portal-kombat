@@ -146,32 +146,35 @@ spec:
                 policy:
                   fromFieldPath: Optional
 
-          # Lifecycle Configuration (separate resource in UPJET)
-          - name: bucket-lifecycle
-            base:
-              apiVersion: s3.aws.upbound.io/v1beta2
-              kind: BucketLifecycleConfiguration
-              spec:
-                forProvider:
-                  bucketSelector:
-                    matchControllerRef: true
-                  rule:
-                    - id: cleanup-incomplete-uploads
-                      status: Enabled
-                      abortIncompleteMultipartUpload:
-                        - daysAfterInitiation: 7
-                  region: us-east-2
-                providerConfigRef:
-                  name: default
-                deletionPolicy: Delete
-            patches:
-              # Patch region from claim
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.region
-                toFieldPath: spec.forProvider.region
-              # Patch provider config from claim
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.providerConfig
-                toFieldPath: spec.providerConfigRef.name
-                policy:
-                  fromFieldPath: Optional
+          # Lifecycle Configuration - TEMPORARILY DISABLED
+          # Disabled due to provider v2.1.1 CRD storage version bug
+          # Bug: v1beta1 is storage version but conversion webhook expects v1beta2 schema
+          # Re-enable when provider is fixed or use manual lifecycle policies via AWS Console
+          # - name: bucket-lifecycle
+          #   base:
+          #     apiVersion: s3.aws.upbound.io/v1beta2
+          #     kind: BucketLifecycleConfiguration
+          #     spec:
+          #       forProvider:
+          #         bucketSelector:
+          #           matchControllerRef: true
+          #         rule:
+          #           - id: cleanup-incomplete-uploads
+          #             status: Enabled
+          #             abortIncompleteMultipartUpload:
+          #               - daysAfterInitiation: 7
+          #         region: us-east-2
+          #       providerConfigRef:
+          #         name: default
+          #       deletionPolicy: Delete
+          #   patches:
+          #     # Patch region from claim
+          #     - type: FromCompositeFieldPath
+          #       fromFieldPath: spec.parameters.region
+          #       toFieldPath: spec.forProvider.region
+          #     # Patch provider config from claim
+          #     - type: FromCompositeFieldPath
+          #       fromFieldPath: spec.parameters.providerConfig
+          #       toFieldPath: spec.providerConfigRef.name
+          #       policy:
+          #         fromFieldPath: Optional
