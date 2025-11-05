@@ -1,0 +1,12 @@
+ArgoCD State Backup
+===================
+Timestamp: Tue Nov  4 19:00:54 CST 2025
+Backup Directory: /Users/austincarter/Development/personal/portal-kombat/backups/argocd-20251104-190036
+
+Applications: 5
+Projects: 1
+ConfigMaps: 4
+Secrets (metadata only): 13
+
+Kubernetes Context: raiden-control-plane
+ArgoCD Version: unknown

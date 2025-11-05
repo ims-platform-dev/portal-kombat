@@ -1,0 +1,210 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: dev-root:argoproj.io/Application:argocd/dev-provider-configs
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"dev-root:argoproj.io/Application:argocd/dev-provider-configs"},"finalizers":["resources-finalizer.argocd.argoproj.io"],"name":"dev-provider-configs","namespace":"argocd"},"spec":{"destination":{"namespace":"crossplane-system","server":"https://kubernetes.default.svc"},"project":"default","source":{"directory":{"include":"platform-dev.yaml"},"path":"shared/configs/provider-configs","repoURL":"git@github.com:ims-platform-dev/portal-kombat.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}
+  creationTimestamp: "2025-11-02T13:37:37Z"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  generation: 775
+  name: dev-provider-configs
+  namespace: argocd
+  resourceVersion: "2857241"
+  uid: 94ccdf2f-1ea2-4cd2-a9d4-229cf9ad6f4a
+spec:
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    directory:
+      include: platform-dev.yaml
+      jsonnet: {}
+    path: shared/configs/provider-configs
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+status:
+  conditions:
+  - lastTransitionTime: "2025-11-04T23:33:23Z"
+    message: 'Failed to load live state: failed to get cluster info for "https://kubernetes.default.svc":
+      error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: ComparisonError
+  - lastTransitionTime: "2025-11-05T00:59:31Z"
+    message: 'Failed to load target state: failed to get cluster version for cluster
+      "https://kubernetes.default.svc": failed to get cluster info for "https://kubernetes.default.svc":
+      error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: ComparisonError
+  - lastTransitionTime: "2025-11-05T00:59:31Z"
+    message: 'error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: UnknownError
+  controllerNamespace: argocd
+  health:
+    lastTransitionTime: "2025-11-02T13:37:38Z"
+    status: Healthy
+  history:
+  - deployStartedAt: "2025-11-02T13:37:38Z"
+    deployedAt: "2025-11-02T13:37:38Z"
+    id: 0
+    initiatedBy:
+      automated: true
+    revision: 49d138ab7268c1b02cc55ec4f8019694b16ad6c2
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-02T14:06:18Z"
+    deployedAt: "2025-11-02T14:06:19Z"
+    id: 1
+    initiatedBy:
+      username: admin
+    revision: 446b40fb77a39a520a4f1a1ca6063c5c535cc651
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-02T14:38:36Z"
+    deployedAt: "2025-11-02T14:38:38Z"
+    id: 2
+    initiatedBy:
+      username: admin
+    revision: c7f6002df8ae42c7366e41cccc3e123c6cec9884
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T02:02:55Z"
+    deployedAt: "2025-11-03T02:02:56Z"
+    id: 3
+    initiatedBy:
+      username: admin
+    revision: b87e08530c65816ac56cabd1d90e152ce80d0b5d
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T11:14:23Z"
+    deployedAt: "2025-11-03T11:14:24Z"
+    id: 4
+    initiatedBy:
+      username: admin
+    revision: 424856c0cb07eb75bf2efc67cbdb4340226b600c
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:31:09Z"
+    deployedAt: "2025-11-04T21:31:10Z"
+    id: 5
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:33:48Z"
+    deployedAt: "2025-11-04T21:33:50Z"
+    id: 6
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:56:04Z"
+    deployedAt: "2025-11-04T21:56:05Z"
+    id: 7
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        include: platform-dev.yaml
+        jsonnet: {}
+      path: shared/configs/provider-configs
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  operationState:
+    finishedAt: "2025-11-04T22:40:14Z"
+    message: 'ComparisonError: Failed to load target state: failed to generate manifest
+      for source 1 of 1: rpc error: code = Unknown desc = Manifest generation error
+      (cached): shared/configs/provider-configs: app path does not exist'
+    operation:
+      initiatedBy:
+        username: admin
+      retry: {}
+      sync:
+        revision: ad9f1dce160e013b7926e0f078c96fc9cfd1d43b
+        syncStrategy:
+          hook: {}
+    phase: Error
+    startedAt: "2025-11-04T22:40:14Z"
+    syncResult:
+      revision: ""
+      source:
+        directory:
+          include: platform-dev.yaml
+          jsonnet: {}
+        path: shared/configs/provider-configs
+        repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+        targetRevision: main
+  reconciledAt: "2025-11-05T00:59:31Z"
+  resourceHealthSource: appTree
+  sourceHydrator: {}
+  summary: {}
+  sync:
+    comparedTo:
+      destination:
+        namespace: crossplane-system
+        server: https://kubernetes.default.svc
+      source:
+        directory:
+          include: platform-dev.yaml
+          jsonnet: {}
+        path: shared/configs/provider-configs
+        repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+        targetRevision: main
+    status: Unknown

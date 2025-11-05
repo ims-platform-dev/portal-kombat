@@ -1,0 +1,266 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/tracking-id: dev-root:argoproj.io/Application:argocd/dev-platform-crossplane
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/sync-wave":"0","argocd.argoproj.io/tracking-id":"dev-root:argoproj.io/Application:argocd/dev-platform-crossplane"},"finalizers":["resources-finalizer.argocd.argoproj.io"],"name":"dev-platform-crossplane","namespace":"argocd"},"spec":{"destination":{"namespace":"crossplane-system","server":"https://kubernetes.default.svc"},"project":"default","source":{"directory":{"exclude":"providers/*.yaml","recurse":true},"path":"platform","repoURL":"git@github.com:ims-platform-dev/portal-kombat.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"retry":{"backoff":{"duration":"5s","factor":2,"maxDuration":"3m"},"limit":3},"syncOptions":["CreateNamespace=true"]}}}
+  creationTimestamp: "2025-11-02T13:36:31Z"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  generation: 1094
+  name: dev-platform-crossplane
+  namespace: argocd
+  resourceVersion: "2819847"
+  uid: dce0cf52-2d1a-4598-af3d-9787ff14fdd5
+spec:
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    directory:
+      exclude: providers/*.yaml
+      jsonnet: {}
+      recurse: true
+    path: platform
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 3
+    syncOptions:
+    - CreateNamespace=true
+status:
+  conditions:
+  - lastTransitionTime: "2025-11-04T23:59:05Z"
+    message: 'Failed to load live state: failed to get cluster info for "https://kubernetes.default.svc":
+      error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: ComparisonError
+  - lastTransitionTime: "2025-11-05T00:51:39Z"
+    message: 'Failed to load target state: failed to get cluster version for cluster
+      "https://kubernetes.default.svc": failed to get cluster info for "https://kubernetes.default.svc":
+      error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: ComparisonError
+  - lastTransitionTime: "2025-11-05T00:51:39Z"
+    message: 'error synchronizing cache state : failed to sync cluster https://172.20.0.1:443:
+      failed to load initial state of resource BucketLifecycleConfiguration.s3.aws.upbound.io:
+      failed to list resources: conversion webhook for s3.aws.upbound.io/v1beta1,
+      Kind=BucketLifecycleConfiguration failed: json: cannot unmarshal string into
+      Go struct field RuleFilterObservation.status.atProvider.rule.filter.objectSizeGreaterThan
+      of type float64'
+    type: UnknownError
+  controllerNamespace: argocd
+  health:
+    lastTransitionTime: "2025-11-03T08:27:27Z"
+    status: Healthy
+  history:
+  - deployStartedAt: "2025-11-03T07:11:47Z"
+    deployedAt: "2025-11-03T07:11:48Z"
+    id: 10
+    initiatedBy:
+      username: admin
+    revision: ae2dd805002fc1523c2a7f2d20dc4139af94b0ea
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T07:13:10Z"
+    deployedAt: "2025-11-03T07:13:11Z"
+    id: 11
+    initiatedBy:
+      username: admin
+    revision: ae2dd805002fc1523c2a7f2d20dc4139af94b0ea
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T07:43:39Z"
+    deployedAt: "2025-11-03T07:43:40Z"
+    id: 12
+    initiatedBy:
+      username: admin
+    revision: ae2dd805002fc1523c2a7f2d20dc4139af94b0ea
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T07:48:23Z"
+    deployedAt: "2025-11-03T07:48:23Z"
+    id: 13
+    initiatedBy:
+      automated: true
+    revision: 7e19a4e8282e4064a83c900d8d48f6702652e91d
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T07:58:04Z"
+    deployedAt: "2025-11-03T07:58:05Z"
+    id: 14
+    initiatedBy:
+      automated: true
+    revision: 0fe6b004915e4f0290dafa629837d096c14eceb0
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T08:40:57Z"
+    deployedAt: "2025-11-03T08:40:58Z"
+    id: 15
+    initiatedBy:
+      automated: true
+    revision: 9c2d09553a79fb4493a5cad5e60ae9d42e3773f3
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-03T11:14:23Z"
+    deployedAt: "2025-11-03T11:14:24Z"
+    id: 16
+    initiatedBy:
+      username: admin
+    revision: 424856c0cb07eb75bf2efc67cbdb4340226b600c
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:31:09Z"
+    deployedAt: "2025-11-04T21:31:10Z"
+    id: 17
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:33:48Z"
+    deployedAt: "2025-11-04T21:33:49Z"
+    id: 18
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  - deployStartedAt: "2025-11-04T21:56:03Z"
+    deployedAt: "2025-11-04T21:56:05Z"
+    id: 19
+    initiatedBy:
+      username: admin
+    revision: 192254e4043c9e1fd54cddd6e828bb44fa153524
+    source:
+      directory:
+        exclude: providers/*.yaml
+        jsonnet: {}
+        recurse: true
+      path: platform
+      repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+  operationState:
+    finishedAt: "2025-11-04T22:41:17Z"
+    message: 'ComparisonError: Failed to load target state: failed to unmarshal manifests
+      for source 1 of 1: Object ''Kind'' is missing in ''{"Statement":[{"Action":["ec2:AllocateAddress","ec2:AssociateRouteTable","ec2:AttachInternetGateway","ec2:AuthorizeSecurityGroupEgress","ec2:AuthorizeSecurityGroupIngress","ec2:CreateInternetGateway","ec2:CreateNatGateway","ec2:CreateRoute","ec2:CreateRouteTable","ec2:CreateSecurityGroup","ec2:CreateSubnet","ec2:CreateTags","ec2:CreateVpc","ec2:DeleteInternetGateway","ec2:DeleteNatGateway","ec2:DeleteRoute","ec2:DeleteRouteTable","ec2:DeleteSecurityGroup","ec2:DeleteSubnet","ec2:DeleteTags","ec2:DeleteVpc","ec2:DescribeAccountAttributes","ec2:DescribeAddresses","ec2:DescribeAvailabilityZones","ec2:DescribeInternetGateways","ec2:DescribeNatGateways","ec2:DescribeNetworkInterfaces","ec2:DescribeRouteTables","ec2:DescribeSecurityGroups","ec2:DescribeSubnets","ec2:DescribeTags","ec2:DescribeVpcs","ec2:DetachInternetGateway","ec2:DisassociateRouteTable","ec2:ModifySubnetAttribute","ec2:ModifyVpcAttribute","ec2:ReleaseAddress","ec2:RevokeSecurityGroupEgress","ec2:RevokeSecurityGroupIngress"],"Effect":"Allow","Resource":"*","Sid":"EC2Permissions"},{"Action":["eks:CreateCluster","eks:CreateNodegroup","eks:DeleteCluster","eks:DeleteNodegroup","eks:DescribeCluster","eks:DescribeNodegroup","eks:ListClusters","eks:ListNodegroups","eks:TagResource","eks:UntagResource","eks:UpdateClusterConfig","eks:UpdateClusterVersion","eks:UpdateNodegroupConfig","eks:UpdateNodegroupVersion"],"Effect":"Allow","Resource":"*","Sid":"EKSPermissions"},{"Action":["iam:AddRoleToInstanceProfile","iam:AttachRolePolicy","iam:CreateInstanceProfile","iam:CreatePolicy","iam:CreateRole","iam:CreateServiceLinkedRole","iam:DeleteInstanceProfile","iam:DeletePolicy","iam:DeleteRole","iam:DeleteRolePolicy","iam:DetachRolePolicy","iam:GetInstanceProfile","iam:GetPolicy","iam:GetPolicyVersion","iam:GetRole","iam:GetRolePolicy","iam:ListAttachedRolePolicies","iam:ListInstanceProfiles","iam:ListInstanceProfilesForRole","iam:ListPolicies","iam:ListRolePolicies","iam:PassRole","iam:PutRolePolicy","iam:RemoveRoleFromInstanceProfile","iam:TagRole","iam:UntagRole","iam:UpdateAssumeRolePolicy"],"Effect":"Allow","Resource":"*","Sid":"IAMPermissions"},{"Action":["s3:CreateBucket","s3:DeleteBucket","s3:DeleteBucketPolicy","s3:DeleteObject","s3:DeleteObjectVersion","s3:GetAccelerateConfiguration","s3:GetBucketAcl","s3:GetBucketCORS","s3:GetBucketLocation","s3:GetBucketLogging","s3:GetBucketNotification","s3:GetBucketPolicy","s3:GetBucketPublicAccessBlock","s3:GetBucketRequestPayment","s3:GetBucketTagging","s3:GetBucketVersioning","s3:GetBucketWebsite","s3:GetEncryptionConfiguration","s3:GetLifecycleConfiguration","s3:GetObject","s3:GetObjectAcl","s3:GetObjectVersion","s3:GetReplicationConfiguration","s3:ListAllMyBuckets","s3:ListBucket","s3:ListBucketVersions","s3:PutBucketAcl","s3:PutBucketCORS","s3:PutBucketLogging","s3:PutBucketNotification","s3:PutBucketPolicy","s3:PutBucketPublicAccessBlock","s3:PutBucketRequestPayment","s3:PutBucketTagging","s3:PutBucketVersioning","s3:PutBucketWebsite","s3:PutEncryptionConfiguration","s3:PutLifecycleConfiguration","s3:PutObject","s3:PutObjectAcl","s3:PutReplicationConfiguration"],"Effect":"Allow","Resource":"*","Sid":"S3Permissions"},{"Action":["rds:AddTagsToResource","rds:CreateDBCluster","rds:CreateDBInstance","rds:CreateDBSubnetGroup","rds:DeleteDBCluster","rds:DeleteDBInstance","rds:DeleteDBSubnetGroup","rds:DescribeDBClusters","rds:DescribeDBInstances","rds:DescribeDBSubnetGroups","rds:ListTagsForResource","rds:ModifyDBCluster","rds:ModifyDBInstance","rds:ModifyDBSubnetGroup","rds:RemoveTagsFromResource"],"Effect":"Allow","Resource":"*","Sid":"RDSPermissions"},{"Action":["logs:CreateLogGroup","logs:DescribeLogGroups","logs:DeleteLogGroup","logs:PutRetentionPolicy","logs:TagLogGroup"],"Effect":"Allow","Resource":"*","Sid":"CloudWatchPermissions"},{"Action":["autoscaling:CreateAutoScalingGroup","autoscaling:CreateLaunchConfiguration","autoscaling:DeleteAutoScalingGroup","autoscaling:DeleteLaunchConfiguration","autoscaling:DescribeAutoScalingGroups","autoscaling:DescribeLaunchConfigurations","autoscaling:UpdateAutoScalingGroup"],"Effect":"Allow","Resource":"*","Sid":"AutoScalingPermissions"},{"Action":["elasticloadbalancing:AddTags","elasticloadbalancing:CreateLoadBalancer","elasticloadbalancing:CreateTargetGroup","elasticloadbalancing:DeleteLoadBalancer","elasticloadbalancing:DeleteTargetGroup","elasticloadbalancing:DescribeLoadBalancers","elasticloadbalancing:DescribeTags","elasticloadbalancing:DescribeTargetGroups","elasticloadbalancing:ModifyLoadBalancerAttributes","elasticloadbalancing:ModifyTargetGroup","elasticloadbalancing:RemoveTags"],"Effect":"Allow","Resource":"*","Sid":"ElasticLoadBalancingPermissions"}],"Version":"2012-10-17","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"dev-platform-crossplane:/:crossplane-system/"}}}''
+      (retried 3 times).'
+    operation:
+      initiatedBy:
+        username: admin
+      retry:
+        backoff:
+          duration: 5s
+          factor: 2
+          maxDuration: 3m
+        limit: 3
+      sync:
+        revision: ad9f1dce160e013b7926e0f078c96fc9cfd1d43b
+        syncOptions:
+        - CreateNamespace=true
+        syncStrategy:
+          hook: {}
+    phase: Error
+    retryCount: 3
+    startedAt: "2025-11-04T22:40:07Z"
+    syncResult:
+      revision: ""
+      source:
+        directory:
+          exclude: providers/*.yaml
+          jsonnet: {}
+          recurse: true
+        path: platform
+        repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+        targetRevision: main
+  reconciledAt: "2025-11-05T00:51:39Z"
+  resourceHealthSource: appTree
+  sourceHydrator: {}
+  summary: {}
+  sync:
+    comparedTo:
+      destination:
+        namespace: crossplane-system
+        server: https://kubernetes.default.svc
+      source:
+        directory:
+          exclude: providers/*.yaml
+          jsonnet: {}
+          recurse: true
+        path: platform
+        repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+        targetRevision: main
+    status: Unknown

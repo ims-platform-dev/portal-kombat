@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"annotations":{},"name":"default","namespace":"argocd"},"spec":{"clusterResourceWhitelist":[{"group":"*","kind":"*"}],"description":"Default project for all applications with full Crossplane support","destinations":[{"namespace":"*","server":"https://kubernetes.default.svc"}],"namespaceResourceWhitelist":[{"group":"*","kind":"*"}],"sourceRepos":["git@github.com:ims-platform-dev/portal-kombat.git","https://github.com/ims-platform-dev/portal-kombat.git","https://charts.crossplane.io/stable/"]}}
+  creationTimestamp: "2025-11-02T11:51:45Z"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  generation: 2
+  name: default
+  namespace: argocd
+  resourceVersion: "516906"
+  uid: cada8e69-a2a3-487d-afd8-f7f40a0f68f6
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  description: Default project for all applications with full Crossplane support
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  sourceRepos:
+  - git@github.com:ims-platform-dev/portal-kombat.git
+  - https://github.com/ims-platform-dev/portal-kombat.git
+  - https://charts.crossplane.io/stable/
