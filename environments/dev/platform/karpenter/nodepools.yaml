@@ -1,0 +1,185 @@
+---
+# Default NodePool - General purpose workloads
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    metadata:
+      labels:
+        workload-type: general
+    spec:
+      # Node requirements
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand", "spot"]  # Mix for cost savings
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.medium
+            - t3.large
+            - t3a.medium
+            - t3a.large
+            - t3.xlarge
+            - t3a.xlarge
+
+      # Node class reference
+      nodeClassRef:
+        name: default
+
+      # Taints (none for default)
+      taints: []
+
+  # Limits for this pool
+  limits:
+    cpu: "100"
+    memory: 200Gi
+
+  # Disruption budget
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s
+    expireAfter: 720h  # 30 days
+
+  # Weight (priority when multiple pools match)
+  weight: 10
+
+---
+# Crossplane Provider NodePool - Optimized for Crossplane providers
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: crossplane-providers
+spec:
+  template:
+    metadata:
+      labels:
+        workload-type: crossplane-providers
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]  # Spot for cost savings
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.large
+            - t3a.large
+            - t3.xlarge
+            - t3a.xlarge
+      nodeClassRef:
+        name: default
+      taints:
+        - key: workload-type
+          value: crossplane-providers
+          effect: NoSchedule
+
+  limits:
+    cpu: "50"
+    memory: 100Gi
+
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 60s
+    expireAfter: 720h
+
+  weight: 20
+
+---
+# Port.io Action Runners NodePool - For bursty self-service actions
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: port-action-runners
+spec:
+  template:
+    metadata:
+      labels:
+        workload-type: port-runners
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]  # Spot for cost-effective bursty workloads
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.medium
+            - t3a.medium
+            - t3.large
+            - t3a.large
+      nodeClassRef:
+        name: default
+      taints:
+        - key: workload-type
+          value: port-runners
+          effect: NoSchedule
+
+  limits:
+    cpu: "50"
+    memory: 100Gi
+
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s
+    expireAfter: 24h  # Short-lived for action runners
+
+  weight: 30
+
+---
+# Critical Control Plane NodePool - On-demand only for stability
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: control-plane-critical
+spec:
+  template:
+    metadata:
+      labels:
+        workload-type: control-plane-critical
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]  # On-demand only for stability
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.large
+            - t3a.large
+            - t3.xlarge
+            - t3a.xlarge
+      nodeClassRef:
+        name: default
+      taints:
+        - key: workload-type
+          value: control-plane-critical
+          effect: NoSchedule
+
+  limits:
+    cpu: "32"
+    memory: 64Gi
+
+  disruption:
+    consolidationPolicy: WhenEmpty  # More conservative
+    consolidateAfter: 300s  # Wait 5 minutes before consolidating
+    expireAfter: Never
+
+  weight: 100  # Highest priority

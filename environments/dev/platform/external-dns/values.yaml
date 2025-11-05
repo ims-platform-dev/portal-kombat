@@ -1,0 +1,50 @@
+external-dns:
+  # AWS Provider Configuration
+  provider: aws
+
+  # AWS Region
+  env:
+    - name: AWS_DEFAULT_REGION
+      value: us-east-2
+
+  # Domain filters (only manage these domains)
+  domainFilters:
+    - plt-dev.inteleradhealth.com 
+
+  policy: sync
+
+  # Unique identifier for this External DNS instance
+  txtOwnerId: portal-kombat-control-plane
+
+  # Service Account with IRSA
+  serviceAccount:
+    create: true
+    name: external-dns
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/external-dns-role 
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 10m
+      memory: 50Mi
+    limits:
+      cpu: 50m
+      memory: 100Mi
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+  # Sources to watch
+  sources:
+    - ingress
+    - service
+
+  # Only sync LoadBalancer and Ingress
+  registry: txt
+
+  # Log level
+  logLevel: info
