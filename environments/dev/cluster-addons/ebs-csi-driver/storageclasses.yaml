@@ -1,0 +1,74 @@
+---
+# GP3 StorageClass - Default for Dev Environment
+# Use for: Prometheus, Grafana, general stateful workloads
+# Benefits: Cost-effective, good performance, expandable volumes
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+  # GP3 defaults: 3000 IOPS, 125 MB/s throughput
+  # Can be customized per PVC if needed
+volumeBindingMode: WaitForFirstConsumer  # Only provision when pod is scheduled
+reclaimPolicy: Delete  # Delete volumes when PVC is deleted (dev environment)
+allowVolumeExpansion: true  # Allow resizing volumes without downtime
+
+---
+# GP3-Retain StorageClass - For data that should survive pod deletion
+# Use for: Development databases, testing data you want to keep
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-retain
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain  # Keep volumes when PVC is deleted (manual cleanup required)
+allowVolumeExpansion: true
+
+---
+# IO2 StorageClass - High-Performance for Databases
+# Use for: Production-like database testing, high IOPS workloads
+# Note: More expensive, use sparingly in dev
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: io2
+provisioner: ebs.csi.aws.com
+parameters:
+  type: io2
+  fsType: ext4
+  encrypted: "true"
+  iops: "10000"  # Guaranteed IOPS (can be customized per PVC)
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+
+---
+# Legacy GP2 StorageClass - Mark as deprecated
+# Keeping for backward compatibility only
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp2
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"  # Remove default status
+    deprecated: "true"
+    migration-target: "gp3"
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  fsType: ext4
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: false

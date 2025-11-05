@@ -1,0 +1,55 @@
+# AWS EBS CSI Driver Configuration for Dev Environment
+# Provides persistent block storage for stateful workloads
+
+aws-ebs-csi-driver:
+  # Controller manages volume provisioning/attachment
+  controller:
+    replicaCount: 2  # HA for dev environment
+
+    # IRSA (IAM Roles for Service Accounts) for AWS permissions
+    serviceAccount:
+      create: true
+      name: ebs-csi-controller-sa
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ebs-csi-driver-role"
+
+    # Resource limits for cost control
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+    # Only run on system/infra nodes if using node selectors
+    # nodeSelector: {}
+    # tolerations: []
+
+  # Node DaemonSet handles volume mounting on worker nodes
+  node:
+    serviceAccount:
+      create: true
+      name: ebs-csi-node-sa
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ebs-csi-driver-role"
+
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+  # StorageClasses will be created separately for better control
+  storageClasses: []
+
+  # Enable volume snapshots for backup/restore capabilities
+  enableVolumeSnapshot: true
+
+  # Dev environment tags
+  extraVolumeTags:
+    Environment: dev
+    ManagedBy: Crossplane
+    Project: portal-kombat

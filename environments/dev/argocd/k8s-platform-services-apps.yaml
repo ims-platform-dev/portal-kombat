@@ -1,15 +1,48 @@
 ---
 # Platform Services App-of-Apps
-# Deploys: cert-manager → external-dns → nginx-ingress → karpenter
+# Deploys: ebs-csi-driver → cert-manager → external-dns → nginx-ingress → karpenter
 # Each service has sync-wave ordering to ensure proper dependency handling
 
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-k8s-ebs-csi-driver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"  # Deploy first - storage foundation
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: environments/dev/cluster-addons/ebs-csi-driver
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system  # CSI drivers typically run in kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # kube-system already exists
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: dev-k8s-cert-manager
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "10"  # Deploy first
+    argocd.argoproj.io/sync-wave: "10"  # After storage
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
