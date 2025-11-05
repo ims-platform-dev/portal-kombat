@@ -40,3 +40,27 @@ metadata:
   name: selfsigned
 spec:
   selfSigned: {}
+
+---
+# Let's Encrypt Production with Route53 DNS-01
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod-dns
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: austin.carter@intelerad.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-dns
+    solvers:
+    - dns01:
+        route53:
+          region: us-east-2
+          # TODO: Add your Route53 Hosted Zone ID here
+          # hostedZoneID: Z1234567890ABC
+          # For IRSA authentication (recommended), cert-manager will use the service account's IAM role
+          # The service account needs Route53 permissions: route53:GetChange, route53:ChangeResourceRecordSets, route53:ListHostedZonesByName
+      selector:
+        dnsZones:
+        - 'example.com'  # TODO: Replace with your actual domain
