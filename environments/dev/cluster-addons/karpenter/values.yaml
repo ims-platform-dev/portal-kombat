@@ -9,10 +9,9 @@ serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/karpenter_controller_role-raiden-control-plane
 
-# High availability
+
 replicas: 2
 
-# Controller configuration
 controller:
   env:
   - name: CLUSTER_NAME
@@ -27,7 +26,7 @@ controller:
       cpu: 2
       memory: 2Gi
 
-# Affinity for controller pods
+
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -44,12 +43,12 @@ affinity:
             app.kubernetes.io/name: karpenter
         topologyKey: kubernetes.io/hostname
 
-# Prevent karpenter from scaling down nodes with karpenter pods
+
 tolerations:
 - key: CriticalAddonsOnly
   operator: Exists
 
-# Webhook
+
 webhook:
   enabled: true
   port: 8443

@@ -3,5 +3,5 @@ name: karpenter
 version: 1.0.0
 dependencies:
   - name: karpenter
-    version: 0.16.3
-    repository: https://charts.karpenter.sh
+    version: 1.0.0
+    repository: oci://public.ecr.aws/karpenter

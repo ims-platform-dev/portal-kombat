@@ -91,25 +91,3 @@ spec:
 
   weight: 10
 
----
-# Example Deployment Tolerations/NodeSelectors
-# 
-# For platform services (ArgoCD, Crossplane, etc.):
-# ---
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   name: argocd-server
-# spec:
-#   template:
-#     spec:
-#       nodeSelector:
-#         workload-type: platform-services
-#       tolerations:
-#         - key: workload-type
-#           operator: Equal
-#           value: platform-services
-#           effect: NoSchedule
-#
-# For general workloads (no changes needed):
-# They'll naturally land on the default pool
