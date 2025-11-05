@@ -1,8 +1,8 @@
-apiVersion: apiextensions.crossplane.io/v1alpha1
+apiVersion: pkg.crossplane.io/v1alpha1
 kind: EnvironmentConfig
 metadata:
   name: cluster
 data:
   awsAccountID: "654654563406"
-  eksOIDC: oidc.eks.us-east-2.amazonaws.com/id/31F74548D0C0D4910526F1FBE62C72B5
+  eksOIDC: oidc.eks.us-east-2.amazonaws.com/id/4170CAFEF06A57C153F466DDE70991DD
   vpcID: vpc-0d5098e85edf3c66a

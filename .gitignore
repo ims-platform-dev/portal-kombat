@@ -44,10 +44,10 @@ terraform.rc
 
 # Backend output files
 backend.tf
-
+CLAUDE.md
 # Kubernetes kubeconfig
 kubeconfig
 kubeconfig.yaml
-
+.claude/*
 # Archive directory (temporary - can be deleted after verification)
 .archive/

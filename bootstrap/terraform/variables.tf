@@ -49,16 +49,3 @@ variable "external_dns_hosted_zone_ids" {
   type        = list(string)
   default     = ["Z05914812OPX7495S4MSP"]  # Allows all zones - restrict in production
 }
-
-# Karpenter Configuration
-variable "karpenter_node_instance_profile_name" {
-  description = "Name for the Karpenter node instance profile"
-  type        = string
-  default     = "karpenter_node_instance_profile"
-}
-
-variable "karpenter_interruption_queue_name" {
-  description = "Name for the SQS queue for spot interruption handling"
-  type        = string
-  default     = "raiden-control-plane"
-}

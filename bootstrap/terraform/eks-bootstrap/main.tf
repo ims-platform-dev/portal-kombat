@@ -141,12 +141,18 @@ module "eks" {
       most_recent    = true
     }
   }
+ 
+  eks_managed_node_group_defaults = {
+    metadata_options = {
+      http_tokens = "required"
+    }
+  }
 
   # for production cluster, add a node group for add-ons that should not be inerrupted such as coredns
   eks_managed_node_groups = {
     initial = {
       instance_types = ["m5.xlarge","m5.2xlarge"]
-      capacity_type  = var.capacity_type # defaults to SPOT
+      capacity_type  = var.capacity_type 
       min_size       = 1
       max_size       = 5
       desired_size   = 3
@@ -160,6 +166,109 @@ module "eks" {
   }
 
   tags = local.tags
+}
+
+#---------------------------------------------------------------
+# Cluster Autoscaler IAM and Deployment
+#---------------------------------------------------------------
+
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    sid     = "ClusterAutoscalerRead"
+    effect  = "Allow"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeScheduledActions",
+      "autoscaling:DescribeTags",
+      "ec2:DescribeInstances",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeInstanceTypes"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ClusterAutoscalerWrite"
+    effect = "Allow"
+    actions = [
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:UpdateAutoScalingGroup"
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${module.eks.cluster_name}"
+      values   = ["owned"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name        = "${module.eks.cluster_name}-cluster-autoscaler"
+  description = "Permissions for the Kubernetes Cluster Autoscaler"
+  policy      = data.aws_iam_policy_document.cluster_autoscaler.json
+}
+
+module "cluster_autoscaler_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name_prefix = "${substr(module.eks.cluster_name, 0, 26)}-ca-"
+
+  role_policy_arns = {
+    autoscaler = aws_iam_policy.cluster_autoscaler.arn
+  }
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:cluster-autoscaler"]
+    }
+  }
+
+  tags = local.tags
+}
+
+resource "helm_release" "cluster_autoscaler" {
+  name             = "cluster-autoscaler"
+  namespace        = "kube-system"
+  repository       = "https://kubernetes.github.io/autoscaler"
+  chart            = "cluster-autoscaler"
+  version          = "9.43.0"
+  create_namespace = false
+
+  depends_on = [
+    module.eks,
+    module.cluster_autoscaler_irsa
+  ]
+
+  values = [
+    yamlencode({
+      cloudProvider = "aws"
+      awsRegion     = local.region
+      autoDiscovery = {
+        clusterName = module.eks.cluster_name
+      }
+      rbac = {
+        serviceAccount = {
+          create = true
+          name   = "cluster-autoscaler"
+          annotations = {
+            "eks.amazonaws.com/role-arn" = module.cluster_autoscaler_irsa.iam_role_arn
+          }
+        }
+      }
+      extraArgs = {
+        "balance-similar-node-groups" = "true"
+        "scale-down-unneeded-time"    = "5m"
+      }
+    })
+  ]
 }
 
 #---------------------------------------------------------------
@@ -253,6 +362,12 @@ resource "kubectl_manifest" "function_patch_and_transform" {
   depends_on = [module.crossplane]
 }
 
+# Wait for Crossplane CRDs to be installed
+resource "time_sleep" "wait_for_crossplane_crds" {
+  create_duration = "90s"
+  depends_on      = [module.crossplane]
+}
+
 # Wait for function to be installed before creating EnvironmentConfig
 resource "time_sleep" "wait_for_function" {
   create_duration = "60s"
@@ -266,7 +381,10 @@ resource "kubectl_manifest" "environmentconfig" {
     vpcID        = local.vpc_id
   })
 
-  depends_on = [time_sleep.wait_for_function]
+  depends_on = [
+    time_sleep.wait_for_crossplane_crds,
+    time_sleep.wait_for_function
+  ]
 }
 
 #---------------------------------------------------------------

@@ -2,35 +2,9 @@
 # EnvironmentConfigs and Composition Functions are GA in v2.0 - no feature flags needed
 # DeploymentRuntimeConfig is GA in v2.0 - no feature flag needed
 
-metrics:
-  enabled: true
-
-args:
-  # Beta features (enabled for enhanced GitOps workflows and resource protection)
-  - '--enable-realtime-compositions'        # Beta: Watch composed resources and reconcile immediately (great for GitOps)
-  - '--enable-ssa-claims'                   # Beta: Use server-side apply for claims (recommended for K8s 1.22+)
-  - '--enable-usages'                       # Beta: Enable deletion ordering and resource protection
-
-resourcesCrossplane:
-  limits:
-    cpu: "1"
-    memory: "2Gi"
-  requests:
-    cpu: "100m"
-    memory: "1Gi"
-
-resourcesRBACManager:
-  limits:
-    cpu: "500m"
-    memory: "1Gi"
-  requests:
-    cpu: "100m"
-    memory: "512Mi"
-rbacManager:
-  deploy: true
-  managementPolicy: All  # Ensures RBAC manager handles all provider permissions
 
 provider:
+  defaultActivations: null
   packages: []
 
 # Ensure proper service account permissions

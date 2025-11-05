@@ -190,12 +190,13 @@ Portal Kombat uses a four-layer hierarchical app-of-apps pattern:
   - `dev-provider-configs` - AWS authentication via IRSA
 
 **Layer 3: Kubernetes Platform Services** (`k8s-platform-services-apps.yaml`)
-- Deploys cluster add-ons: cert-manager, external-dns, nginx-ingress, karpenter
+- Deploys cluster add-ons: cert-manager, external-dns, nginx-ingress
 - Applications:
+  - `dev-k8s-ebs-csi-driver` (sync-wave: 5) - EBS CSI driver for persistent storage
   - `dev-k8s-cert-manager` (sync-wave: 10) - Certificate management
   - `dev-k8s-external-dns` (sync-wave: 20) - DNS automation
   - `dev-k8s-nginx-ingress` (sync-wave: 30) - Ingress controller
-  - `dev-k8s-karpenter` (sync-wave: 40) - Node autoscaling
+- Note: Cluster autoscaling is handled by cluster-autoscaler deployed via Terraform in `bootstrap/terraform/eks-bootstrap/main.tf`
 
 **Layer 4: Workloads** (`workloads-apps.yaml`)
 - Deploys applications from `/environments/dev/workloads`

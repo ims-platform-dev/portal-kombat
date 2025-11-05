@@ -9,6 +9,7 @@ variable "subnet_ids" {
 }
 
 variable "security_group_ids" {
-  description = "List of security group IDs to tag for Karpenter discovery"
-  type        = list(string)
+  description = "Map of security group IDs keyed by logical name"
+  type        = map(string)
+  default     = {}
 }

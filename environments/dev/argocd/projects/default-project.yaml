@@ -11,7 +11,7 @@ spec:
   # Source repositories allowed
   sourceRepos:
     - 'git@github.com:ims-platform-dev/portal-kombat.git'
-    - 'https://github.com/ims-platform-dev/portal-kombat.git'
+    - 'git@github.com:ims-platform-dev/portal-kombat.git'
     - 'https://charts.crossplane.io/stable/'  # Crossplane Helm chart
 
   # Destinations allowed

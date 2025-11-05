@@ -1,7 +1,8 @@
 ---
 # Platform Services App-of-Apps
-# Deploys: ebs-csi-driver → cert-manager → external-dns → nginx-ingress → karpenter
+# Deploys: ebs-csi-driver → cert-manager → external-dns → nginx-ingress
 # Each service has sync-wave ordering to ensure proper dependency handling
+# Note: Cluster autoscaling is handled by cluster-autoscaler deployed via Terraform
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -132,39 +133,3 @@ spec:
         factor: 2
         maxDuration: 3m
 
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: dev-k8s-karpenter
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "40"  # After nginx-ingress
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
-    targetRevision: main
-    path: environments/dev/cluster-addons/karpenter
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: karpenter
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  ignoreDifferences:
-    - group: admissionregistration.k8s.io
-      kind: ValidatingWebhookConfiguration
-      jsonPointers:
-        - /webhooks/0/clientConfig/caBundle

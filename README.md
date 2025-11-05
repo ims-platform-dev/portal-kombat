@@ -206,8 +206,8 @@ portal-kombat/
 │       ├── cluster-addons/    # Cluster services for dev
 │       │   ├── cert-manager/  # Certificate management
 │       │   ├── external-dns/  # DNS automation
-│       │   ├── nginx-ingress/ # Ingress controller
-│       │   └── karpenter/     # Node autoscaling
+│       │   └── nginx-ingress/ # Ingress controller
+│       │   # Note: cluster-autoscaler deployed via Terraform bootstrap
 │       └── workloads/         # Application workloads
 │           └── s3reader/      # Example application
 │

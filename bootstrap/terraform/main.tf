@@ -74,39 +74,62 @@ module "external_dns_irsa" {
   hosted_zone_ids  = var.external_dns_hosted_zone_ids
 }
 
+# terraform/irsa/vpc-cni.tf
+locals {
+  oidc_provider_url = "oidc.eks.${var.aws_region}.amazonaws.com/id/${var.oidc_provider_id}"
+  oidc_provider_arn = "arn:aws:iam::${var.aws_account_id}:oidc-provider/${local.oidc_provider_url}"
+}
 
-module "karpenter_controller_irsa" {
-  source = "./modules/karpenter-controller-irsa"
+data "aws_iam_policy_document" "vpc_cni_assume_role" {
+  statement {
+    effect = "Allow"
 
-  cluster_name     = var.cluster_name
-  aws_account_id   = var.aws_account_id
-  aws_region       = var.aws_region
-  oidc_provider_id = var.oidc_provider_id
-  queue_name       = var.karpenter_interruption_queue_name
+    principals {
+      type        = "Federated"
+      identifiers = [local.oidc_provider_arn]
+    }
+
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_url}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-node"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider_url}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "vpc_cni" {
+  name               = "${var.cluster_name}-vpc-cni"
+  assume_role_policy = data.aws_iam_policy_document.vpc_cni_assume_role.json
+
+  tags = {
+    Name      = "${var.cluster_name}-vpc-cni"
+    ManagedBy = "Terraform"
+    Cluster   = var.cluster_name
+    Purpose   = "VPC-CNI-IRSA"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_cni_policy" {
+  role       = aws_iam_role.vpc_cni.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
 
-module "karpenter_node_role" {
-  source = "./modules/karpenter-node-role"
 
-  cluster_name            = var.cluster_name
-  instance_profile_name   = var.karpenter_node_instance_profile_name
+output "vpc_cni_role_arn" {
+  description = "ARN of the VPC CNI IRSA role"
+  value       = aws_iam_role.vpc_cni.arn
 }
 
-
-module "karpenter_interruption_queue" {
-  source = "./modules/karpenter-interruption-queue"
-
-  cluster_name            = var.cluster_name
-  queue_name              = var.karpenter_interruption_queue_name
-  karpenter_controller_role_arn = module.karpenter_controller_irsa.role_arn
-}
-
-
-module "karpenter_tags" {
-  source = "./modules/karpenter-tags"
-
-  cluster_name        = var.cluster_name
-  subnet_ids          = data.aws_subnets.cluster_subnets.ids
-  security_group_ids  = [data.aws_security_group.cluster_sg.id]
+output "vpc_cni_role_name" {
+  description = "Name of the VPC CNI IRSA role"
+  value       = aws_iam_role.vpc_cni.name
 }
