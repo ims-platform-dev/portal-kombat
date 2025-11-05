@@ -27,7 +27,7 @@ spec:
           # Main S3 Bucket
           - name: s3-bucket
             base:
-              apiVersion: s3.aws.upbound.io/v1beta1
+              apiVersion: s3.aws.upbound.io/v1beta2
               kind: Bucket
               spec:
                 forProvider:
@@ -65,7 +65,7 @@ spec:
           # Bucket Versioning (separate resource in UPJET)
           - name: bucket-versioning
             base:
-              apiVersion: s3.aws.upbound.io/v1beta1
+              apiVersion: s3.aws.upbound.io/v1beta2
               kind: BucketVersioning
               spec:
                 forProvider:
@@ -92,7 +92,7 @@ spec:
           # Server-Side Encryption (separate resource in UPJET)
           - name: bucket-encryption
             base:
-              apiVersion: s3.aws.upbound.io/v1beta1
+              apiVersion: s3.aws.upbound.io/v1beta2
               kind: BucketServerSideEncryptionConfiguration
               spec:
                 forProvider:
@@ -149,7 +149,7 @@ spec:
           # Lifecycle Configuration (separate resource in UPJET)
           - name: bucket-lifecycle
             base:
-              apiVersion: s3.aws.upbound.io/v1beta1
+              apiVersion: s3.aws.upbound.io/v1beta2
               kind: BucketLifecycleConfiguration
               spec:
                 forProvider:
