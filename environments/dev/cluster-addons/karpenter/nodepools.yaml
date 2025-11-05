@@ -1,5 +1,53 @@
 ---
-# Default NodePool - General purpose workloads
+# Platform Services - Critical control plane components
+# ArgoCD, Crossplane + Providers, Monitoring, Cert-Manager, External-DNS, Nginx-Ingress
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: platform-services
+spec:
+  template:
+    metadata:
+      labels:
+        workload-type: platform-services
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]  # On-demand only for stability
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - m5.xlarge    # Your current standard
+            - m5.2xlarge   # For heavier monitoring/crossplane loads
+
+      nodeClassRef:
+        name: default
+
+      taints:
+        - key: workload-type
+          value: platform-services
+          effect: NoSchedule
+
+  limits:
+    cpu: "64"
+    memory: 128Gi
+
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s  # Wait 5min before consolidating
+    expireAfter: Never      # Never expire platform nodes
+
+  weight: 100  # Highest priority
+
+---
+# Default - Application workloads and general purpose
 apiVersion: karpenter.sh/v1beta1
 kind: NodePool
 metadata:
@@ -10,7 +58,6 @@ spec:
       labels:
         workload-type: general
     spec:
-      # Node requirements
       requirements:
         - key: kubernetes.io/arch
           operator: In
@@ -20,166 +67,49 @@ spec:
           values: ["linux"]
         - key: karpenter.sh/capacity-type
           operator: In
-          values: ["on-demand", "spot"]  # Mix for cost savings
+          values: ["on-demand", "spot"]  # Mix for cost optimization
         - key: node.kubernetes.io/instance-type
           operator: In
           values:
-            - t3.medium
-            - t3.large
-            - t3a.medium
-            - t3a.large
-            - t3.xlarge
-            - t3a.xlarge
+            - m5.large     # Smaller workloads
+            - m5.xlarge    # Standard size
+            - m5.2xlarge   # Larger workloads
 
-      # Node class reference
       nodeClassRef:
         name: default
 
-      # Taints (none for default)
-      taints: []
+      taints: []  # No taints - accepts any workload
 
-  # Limits for this pool
   limits:
-    cpu: "100"
-    memory: 200Gi
+    cpu: "200"
+    memory: 400Gi
 
-  # Disruption budget
   disruption:
     consolidationPolicy: WhenUnderutilized
     consolidateAfter: 30s
     expireAfter: 720h  # 30 days
 
-  # Weight (priority when multiple pools match)
   weight: 10
 
 ---
-# Crossplane Provider NodePool - Optimized for Crossplane providers
-apiVersion: karpenter.sh/v1beta1
-kind: NodePool
-metadata:
-  name: crossplane-providers
-spec:
-  template:
-    metadata:
-      labels:
-        workload-type: crossplane-providers
-    spec:
-      requirements:
-        - key: kubernetes.io/arch
-          operator: In
-          values: ["amd64"]
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["spot"]  # Spot for cost savings
-        - key: node.kubernetes.io/instance-type
-          operator: In
-          values:
-            - t3.large
-            - t3a.large
-            - t3.xlarge
-            - t3a.xlarge
-      nodeClassRef:
-        name: default
-      taints:
-        - key: workload-type
-          value: crossplane-providers
-          effect: NoSchedule
-
-  limits:
-    cpu: "50"
-    memory: 100Gi
-
-  disruption:
-    consolidationPolicy: WhenUnderutilized
-    consolidateAfter: 60s
-    expireAfter: 720h
-
-  weight: 20
-
----
-# Port.io Action Runners NodePool - For bursty self-service actions
-apiVersion: karpenter.sh/v1beta1
-kind: NodePool
-metadata:
-  name: port-action-runners
-spec:
-  template:
-    metadata:
-      labels:
-        workload-type: port-runners
-    spec:
-      requirements:
-        - key: kubernetes.io/arch
-          operator: In
-          values: ["amd64"]
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["spot"]  # Spot for cost-effective bursty workloads
-        - key: node.kubernetes.io/instance-type
-          operator: In
-          values:
-            - t3.medium
-            - t3a.medium
-            - t3.large
-            - t3a.large
-      nodeClassRef:
-        name: default
-      taints:
-        - key: workload-type
-          value: port-runners
-          effect: NoSchedule
-
-  limits:
-    cpu: "50"
-    memory: 100Gi
-
-  disruption:
-    consolidationPolicy: WhenUnderutilized
-    consolidateAfter: 30s
-    expireAfter: 24h  # Short-lived for action runners
-
-  weight: 30
-
----
-# Critical Control Plane NodePool - On-demand only for stability
-apiVersion: karpenter.sh/v1beta1
-kind: NodePool
-metadata:
-  name: control-plane-critical
-spec:
-  template:
-    metadata:
-      labels:
-        workload-type: control-plane-critical
-    spec:
-      requirements:
-        - key: kubernetes.io/arch
-          operator: In
-          values: ["amd64"]
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["on-demand"]  # On-demand only for stability
-        - key: node.kubernetes.io/instance-type
-          operator: In
-          values:
-            - t3.large
-            - t3a.large
-            - t3.xlarge
-            - t3a.xlarge
-      nodeClassRef:
-        name: default
-      taints:
-        - key: workload-type
-          value: control-plane-critical
-          effect: NoSchedule
-
-  limits:
-    cpu: "32"
-    memory: 64Gi
-
-  disruption:
-    consolidationPolicy: WhenEmpty  # More conservative
-    consolidateAfter: 300s  # Wait 5 minutes before consolidating
-    expireAfter: Never
-
-  weight: 100  # Highest priority
+# Example Deployment Tolerations/NodeSelectors
+# 
+# For platform services (ArgoCD, Crossplane, etc.):
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: argocd-server
+# spec:
+#   template:
+#     spec:
+#       nodeSelector:
+#         workload-type: platform-services
+#       tolerations:
+#         - key: workload-type
+#           operator: Equal
+#           value: platform-services
+#           effect: NoSchedule
+#
+# For general workloads (no changes needed):
+# They'll naturally land on the default pool

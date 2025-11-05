@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-CLUSTER_NAME="your-eks-cluster-name"  # TODO: Update with your EKS cluster name
+CLUSTER_NAME="raiden-control-plane"  # TODO: Update with your EKS cluster name
 AWS_REGION="us-east-2"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 POLICY_NAME="cert-manager-route53-policy"
