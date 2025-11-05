@@ -16,7 +16,7 @@ public:
         service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
         service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
         service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-        external-dns.alpha.kubernetes.io/hostname: ingress.plt-dev.inteleradhealth.com
+        external-dns.alpha.kubernetes.io/hostname: controller.plt-dev.inteleradhealth.com
 
     # Metrics
     metrics:
@@ -105,7 +105,7 @@ internal:
         # Cross-zone load balancing for high availability
         service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
         # External DNS - automatic DNS record creation
-        external-dns.alpha.kubernetes.io/hostname: ingress.plt-dev.inteleradhealth.com
+        external-dns.alpha.kubernetes.io/hostname: controller.plt-dev.inteleradhealth.com
 
     # Metrics
     metrics:
