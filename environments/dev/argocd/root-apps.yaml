@@ -17,7 +17,7 @@ spec:
     directory:
       recurse: false
       # RBAC managed separately - see rbac-app.yaml
-      include: '{crossplane-platform-apps.yaml,infrastructure-claims-apps.yaml,k8s-platform-services-apps.yaml,workloads-apps.yaml}'
+      include: '{crossplane-platform-apps.yaml,infrastructure-claims-apps.yaml,k8s-platform-services-apps.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
