@@ -121,6 +121,8 @@ spec:
       releaseName: dev-k8s-nginx-ingress
       valueFiles:
         - values.yaml
+      skipCrds: false
+      parameters: []
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
