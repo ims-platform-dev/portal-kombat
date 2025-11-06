@@ -117,6 +117,10 @@ spec:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
     path: environments/dev/cluster-addons/nginx-ingress
+    helm:
+      releaseName: dev-k8s-nginx-ingress
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
