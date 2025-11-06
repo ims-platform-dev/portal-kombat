@@ -68,7 +68,7 @@ spec:
     targetRevision: main
     path: infra-definitions/shared/configs/provider-configs
     directory:
-      include: 'platform-dev.yaml'
+      include: '{platform-dev.yaml,aws-upbound-runtime-config.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
