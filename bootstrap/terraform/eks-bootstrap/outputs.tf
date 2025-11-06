@@ -18,3 +18,12 @@ output "cluster_autoscaler_role_name" {
   value       = module.cluster_autoscaler_irsa.iam_role_name
 }
 
+output "crossplane_irsa_role_arn" {
+  description = "ARN of the Crossplane IRSA role for AWS provider authentication"
+  value       = module.crossplane_irsa.iam_role_arn
+}
+
+output "crossplane_irsa_role_name" {
+  description = "Name of the Crossplane IRSA role"
+  value       = module.crossplane_irsa.iam_role_name
+}

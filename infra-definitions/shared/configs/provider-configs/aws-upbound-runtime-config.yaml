@@ -1,6 +1,10 @@
 ---
 # DeploymentRuntimeConfig for AWS Upbound Providers (S3, EC2, EKS, IAM, RDS)
 # This configures the service account with IRSA annotations
+#
+# IMPORTANT: Update the IAM role ARN after Terraform bootstrap
+# Get the ARN from: terraform output crossplane_irsa_role_arn
+#
 apiVersion: pkg.crossplane.io/v1beta1
 kind: DeploymentRuntimeConfig
 metadata:
@@ -24,4 +28,6 @@ spec:
       name: provider-aws-upbound
       annotations:
         # IAM role for IRSA - allows Crossplane providers to access AWS
+        # This role is created by bootstrap/terraform/eks-bootstrap (module.crossplane_irsa)
+        # Update this after running: terraform output crossplane_irsa_role_arn
         eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-crossplane20251102124054729800000001"

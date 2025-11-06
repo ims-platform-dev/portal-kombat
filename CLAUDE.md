@@ -335,14 +335,21 @@ RBAC changes should never be auto-synced and require manual approval for securit
 
 ## Bootstrap Process
 
-For initial cluster setup:
+The cluster bootstrap is fully automated via Terraform:
 
 ```bash
-# 1. Install Crossplane
-kubectl apply -f bootstrap/crossplane/install.yaml
-kubectl wait --for=condition=ready pod -l app=crossplane -n crossplane-system --timeout=300s
+# 1. Bootstrap cluster with Terraform (one-time setup)
+cd bootstrap/terraform/eks-bootstrap
+terraform init
+terraform apply -var-file=raiden.tfvars
 
-# 2. Deploy root ArgoCD application
+# This automatically:
+# - Creates EKS cluster with managed node groups
+# - Installs Crossplane via Helm
+# - Installs ArgoCD via Helm
+# - Configures IRSA for all components
+
+# 2. Deploy root ArgoCD application (GitOps takes over)
 kubectl apply -f environments/dev/argocd/root-apps.yaml
 
 # 3. Watch deployment
@@ -359,14 +366,14 @@ kubectl get applications -n argocd -w
 # dev-k8s-nginx-ingress     Synced   Healthy
 # dev-k8s-karpenter         Synced   Healthy
 
-# 4. Verify providers
+# 4. Verify providers (deployed by ArgoCD)
 kubectl get providers
 
-# 5. Verify provider configs
+# 5. Verify provider configs (deployed by ArgoCD)
 kubectl get providerconfigs
 ```
 
-See `bootstrap/crossplane/crossplane.sh` for detailed bootstrap script (reference only).
+After initial Terraform bootstrap, all updates are managed through GitOps via ArgoCD.
 
 ## Additional Documentation
 

@@ -66,29 +66,8 @@ variable "public_subnet_ids" {
   default     = ["subnet-0b4ba68dce446a70a", "subnet-0562936295b6fd63d", "subnet-0a21b8538f27cb78d"]
 }
 
-variable "enable_upjet_aws_provider" {
-  type        = bool
-  description = "Installs the upjet aws provider"
-  default     = true
-}
-
-variable "enable_aws_provider" {
-  type        = bool
-  description = "Installs the contrib aws provider"
-  default     = false
-}
-
-variable "enable_kubernetes_provider" {
-  type        = bool
-  description = "Installs the kubernetes provider"
-  default     = true
-}
-
-variable "enable_helm_provider" {
-  type        = bool
-  description = "Installs the helm provider"
-  default     = true
-}
+# Note: Crossplane providers are now deployed via ArgoCD from infra-definitions/
+# Terraform only creates the IRSA role for AWS authentication
 
 # EKS Cluster Endpoint Access Configuration
 variable "cluster_endpoint_public_access" {

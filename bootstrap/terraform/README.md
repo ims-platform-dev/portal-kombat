@@ -1,8 +1,10 @@
 # Platform Services Infrastructure - Terraform
 
-This Terraform configuration creates all AWS infrastructure required for the platform services:
+This Terraform configuration creates AWS infrastructure required for the platform services:
 - **External DNS**: IAM role with IRSA for Route53 DNS management
-- **Karpenter**: Controller IAM role, Node IAM role, SQS queue, EventBridge rules, and resource tagging
+- **VPC CNI**: IAM role with IRSA for pod networking
+
+**Note:** Cluster autoscaling is handled by cluster-autoscaler deployed in `eks-bootstrap/main.tf` (lines 172-272).
 
 ## Prerequisites
 
@@ -22,11 +24,7 @@ bootstrap/terraform/
 ├── outputs.tf              # Output values
 ├── terraform.tfvars        # Your custom values (create from .example)
 └── modules/
-    ├── external-dns-irsa/           # External DNS IAM role
-    ├── karpenter-controller-irsa/   # Karpenter controller IAM role
-    ├── karpenter-node-role/         # Karpenter node IAM role & instance profile
-    ├── karpenter-interruption-queue/ # SQS queue & EventBridge rules
-    └── karpenter-tags/              # Subnet & security group tags
+    └── external-dns-irsa/  # External DNS IAM role
 ```
 
 ## Quick Start
@@ -69,10 +67,7 @@ terraform plan
 ```
 
 Expected resources to be created:
-- 2 IAM roles (External DNS, Karpenter Controller)
-- 1 IAM role with instance profile (Karpenter Node)
-- 1 SQS queue
-- 4 EventBridge rules with targets
+- 2 IAM roles (External DNS, VPC CNI)
 - Subnet and security group tags
 
 ### 4. Apply Configuration
@@ -90,9 +85,7 @@ terraform output
 ```
 
 You should see:
-- IAM role ARNs for External DNS and Karpenter
-- Instance profile ARN for Karpenter nodes
-- SQS queue URL and ARN
+- IAM role ARNs for External DNS and VPC CNI
 - Tagged subnet and security group IDs
 
 ## Outputs
@@ -101,11 +94,8 @@ The following outputs are provided for use in Kubernetes manifests:
 
 | Output | Description | Used In |
 |--------|-------------|---------|
-| `external_dns_role_arn` | External DNS IAM role ARN | `environments/dev/platform/external-dns/values.yaml` |
-| `karpenter_controller_role_arn` | Karpenter controller IAM role ARN | `environments/dev/platform/karpenter/values.yaml` |
-| `karpenter_node_role_name` | Karpenter node IAM role name | `environments/dev/platform/karpenter/nodeclass.yaml` |
-| `karpenter_node_instance_profile_name` | Karpenter node instance profile | Used by Karpenter for node provisioning |
-| `karpenter_interruption_queue_name` | SQS queue for spot interruption | `environments/dev/platform/karpenter/values.yaml` |
+| `external_dns_role_arn` | External DNS IAM role ARN | `environments/dev/cluster-addons/external-dns/values.yaml` |
+| `vpc_cni_role_arn` | VPC CNI IAM role ARN | Used by VPC CNI for pod networking |
 
 ## Module Details
 
@@ -121,60 +111,12 @@ Creates an IAM role with IRSA (IAM Roles for Service Accounts) for External DNS 
 - Restrict hosted zones in production using `external_dns_hosted_zone_ids`
 - Default `["*"]` allows all zones (dev/test only)
 
-### Karpenter Controller IRSA
+### VPC CNI IRSA
 
-Creates an IAM role with comprehensive permissions for Karpenter to manage EC2 instances.
-
-**Permissions:**
-- EC2: Create/delete instances, launch templates, fleets
-- IAM: Pass role, create/manage instance profiles
-- SSM: Get parameters for AMI selection
-- Pricing: Get products for cost optimization
-- SQS: Read from interruption queue
-- EKS: Describe cluster
-
-**Security:**
-- Scoped to specific cluster using tags
-- Condition-based permissions for resource creation
-- Regional restrictions applied
-
-### Karpenter Node Role
-
-Creates an IAM role and instance profile for Karpenter-provisioned nodes.
+Creates an IAM role with IRSA for VPC CNI plugin to manage pod networking.
 
 **Permissions:**
-- AWS managed policies attached:
-  - `AmazonEKSWorkerNodePolicy`
-  - `AmazonEKS_CNI_Policy`
-  - `AmazonEC2ContainerRegistryReadOnly`
-  - `AmazonSSMManagedInstanceCore`
-
-### Karpenter Interruption Queue
-
-Creates SQS queue and EventBridge rules for graceful spot instance interruption handling.
-
-**EventBridge Rules:**
-1. EC2 Spot Instance Interruption Warning
-2. EC2 Instance Rebalance Recommendation
-3. EC2 Instance State-change Notification
-4. AWS Health Events
-
-**Configuration:**
-- Message retention: 300 seconds (5 minutes)
-- SSE encryption enabled
-- Queue policy allows EventBridge to send messages
-
-### Karpenter Tags
-
-Tags EKS subnets and security groups for Karpenter discovery.
-
-**Tags Applied:**
-- `karpenter.sh/discovery: <cluster-name>`
-
-**Auto-Discovery:**
-- Automatically finds EKS cluster subnets and security group
-- Tags all subnets associated with the cluster
-- Tags the cluster security group
+- AWS managed policy: `AmazonEKS_CNI_Policy`
 
 ## Integration with Kubernetes
 
@@ -182,31 +124,12 @@ After Terraform applies successfully, update your Kubernetes manifests:
 
 ### External DNS
 
-Update `environments/dev/platform/external-dns/values.yaml`:
+Update `environments/dev/cluster-addons/external-dns/values.yaml`:
 
 ```yaml
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: <external_dns_role_arn>
-```
-
-### Karpenter
-
-Update `environments/dev/platform/karpenter/values.yaml`:
-
-```yaml
-settings:
-  interruptionQueue: <karpenter_interruption_queue_name>
-serviceAccount:
-  annotations:
-    eks.amazonaws.com/role-arn: <karpenter_controller_role_arn>
-```
-
-Update `environments/dev/platform/karpenter/nodeclass.yaml`:
-
-```yaml
-spec:
-  role: <karpenter_node_role_name>
 ```
 
 ## Remote State (Optional)
@@ -286,9 +209,6 @@ Subnets must have tag: `kubernetes.io/cluster/<cluster-name> = shared`
   "Action": [
     "iam:CreateRole",
     "iam:AttachRolePolicy",
-    "iam:CreateInstanceProfile",
-    "sqs:CreateQueue",
-    "events:PutRule",
     "ec2:CreateTags"
   ],
   "Resource": "*"
@@ -305,27 +225,22 @@ terraform destroy
 
 **Warning:** This will delete:
 - All IAM roles and policies
-- SQS queue (spot interruption notifications will stop)
-- EventBridge rules
 - Tags on subnets and security groups
 
 ## Cost Considerations
 
 This infrastructure has minimal cost:
 - **IAM Roles**: Free
-- **SQS Queue**: ~$0.40/month (standard queue, 1M requests)
-- **EventBridge Rules**: ~$1.00/month (4 rules)
 - **EC2 Tags**: Free
 
-**Total estimated cost:** < $2/month
+**Total estimated cost:** $0/month
 
 ## Security Best Practices
 
 1. **Restrict Route53 Zones**: In production, specify exact hosted zone IDs
 2. **Use Remote State**: Store state in S3 with encryption and locking
 3. **Limit OIDC Conditions**: Trust policy scoped to specific service account
-4. **Regional Restrictions**: Karpenter permissions scoped to specific region
-5. **Tag-Based Permissions**: Karpenter can only manage tagged resources
+4. **Regional Restrictions**: Permissions scoped to specific region
 
 ## Next Steps
 
@@ -339,9 +254,22 @@ After Terraform completes:
 3. **Verify deployments**:
    ```bash
    kubectl get pods -n external-dns
-   kubectl get pods -n karpenter
-   kubectl get nodepools
+   kubectl get nodes  # Verify cluster-autoscaler is managing nodes
    ```
+
+## Cluster Autoscaler
+
+The cluster-autoscaler is deployed via Terraform in `eks-bootstrap/main.tf` (lines 172-272) with:
+- IAM role with IRSA for autoscaling permissions
+- Helm chart version 9.43.0
+- Auto-discovery of node groups using cluster tags
+- Proper configuration for EKS integration
+
+To verify cluster-autoscaler:
+```bash
+kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-cluster-autoscaler
+kubectl logs -n kube-system -l app.kubernetes.io/name=aws-cluster-autoscaler
+```
 
 ## Support
 
