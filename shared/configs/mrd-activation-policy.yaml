@@ -1,0 +1,20 @@
+---
+# ManagedResourceActivationPolicy for Upbound AWS Providers
+# Automatically activates all Upbound AWS MRDs to enable CRD creation
+# Required for Crossplane v2 + Upbound provider-family-aws v2.x architecture
+#
+# Background: Upbound v2.x providers install ManagedResourceDefinitions (MRDs)
+# in "Inactive" state by default to reduce API server memory overhead.
+# This policy activates all Upbound AWS MRDs automatically.
+
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: ManagedResourceActivationPolicy
+metadata:
+  name: activate-upbound-aws-resources
+spec:
+  activate:
+    # Cluster-scoped Upbound AWS resources
+    - "*.aws.upbound.io"
+
+    # Namespace-scoped Upbound AWS resources (managed namespace)
+    - "*.aws.m.upbound.io"

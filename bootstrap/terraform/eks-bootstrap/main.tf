@@ -412,7 +412,8 @@ module "crossplane_irsa" {
       provider_arn = module.eks.oidc_provider_arn
       namespace_service_accounts = [
         "${local.crossplane_namespace}:provider-aws-*",
-        "${local.crossplane_namespace}:provider-upjet-aws-*"
+        "${local.crossplane_namespace}:provider-upjet-aws-*",
+        "${local.crossplane_namespace}:provider-aws-upbound"  # Single SA for all Upbound v2.x providers
       ]
     }
   }

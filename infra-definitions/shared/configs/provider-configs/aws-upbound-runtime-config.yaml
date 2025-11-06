@@ -10,19 +10,6 @@ kind: DeploymentRuntimeConfig
 metadata:
   name: aws-upbound-runtime-config
 spec:
-  deploymentTemplate:
-    spec:
-      replicas: 1
-      selector: {}
-      template:
-        spec:
-          containers:
-            - name: package-runtime
-              args:
-                - --debug
-                - --enable-management-policies  # Enable management policies for drift detection
-          securityContext:
-            fsGroup: 2000
   serviceAccountTemplate:
     metadata:
       name: provider-aws-upbound
@@ -30,4 +17,4 @@ spec:
         # IAM role for IRSA - allows Crossplane providers to access AWS
         # This role is created by bootstrap/terraform/eks-bootstrap (module.crossplane_irsa)
         # Update this after running: terraform output crossplane_irsa_role_arn
-        eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-crossplane20251102124054729800000001"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-crossplane-20251106001008133000000001"
