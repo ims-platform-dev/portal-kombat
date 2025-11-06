@@ -85,6 +85,12 @@ spec:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
     path: environments/dev/cluster-addons/external-dns
+    helm:
+      releaseName: dev-k8s-external-dns
+      valueFiles:
+        - values.yaml
+      skipCrds: false
+      parameters: []
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns
