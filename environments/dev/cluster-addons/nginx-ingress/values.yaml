@@ -69,7 +69,6 @@ internal:
       enabled: true
       default: false
       controllerValue: "k8s.io/ingress-nginx-internal"
-e
     service:
       type: LoadBalancer
       annotations:
