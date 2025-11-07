@@ -170,4 +170,65 @@ spec:
                     - namespace
               required:
                 - parameters
+            status:
+              type: object
+              description: Observed state of the VPC and related networking resources
+              properties:
+                vpcId:
+                  type: string
+                  description: AWS VPC ID of the created VPC
+                internetGatewayId:
+                  type: string
+                  description: AWS Internet Gateway ID attached to the VPC
+                natGatewayId:
+                  type: string
+                  description: AWS NAT Gateway ID for private subnet internet access
+                publicSubnets:
+                  type: array
+                  description: Details of provisioned public subnets
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: AWS Subnet ID
+                privateSubnets:
+                  type: array
+                  description: Details of provisioned private subnets
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: AWS Subnet ID
+                publicRouteTables:
+                  type: array
+                  description: Details of public route tables
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: AWS Route Table ID
+                privateRouteTables:
+                  type: array
+                  description: Details of private route tables
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: AWS Route Table ID
+                publicSubnetIdsCsv:
+                  type: string
+                  description: Comma-separated list of public subnet IDs
+                privateSubnetIdsCsv:
+                  type: string
+                  description: Comma-separated list of private subnet IDs
+                publicRouteTableIdsCsv:
+                  type: string
+                  description: Comma-separated list of public route table IDs
+                privateRouteTableIdsCsv:
+                  type: string
+                  description: Comma-separated list of private route table IDs
 
