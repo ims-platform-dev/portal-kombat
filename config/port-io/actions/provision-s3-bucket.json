@@ -82,7 +82,7 @@
   },
   "invocationMethod": {
     "type": "GITHUB",
-    "org": "your-org",
+    "org": "ims-platform-dev",
     "repo": "portal-kombat",
     "workflow": "port-s3-provisioning.yaml",
     "omitPayload": false,
