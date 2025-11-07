@@ -84,7 +84,7 @@ spec:
                             map(split("/")[-1] | split(":")[0])
   destination:
     server: https://kubernetes.default.svc
-    namespace: port-exporter
+    namespace: port-k8s-exporter
 
   syncPolicy:
     automated:
