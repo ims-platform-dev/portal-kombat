@@ -728,7 +728,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-0
@@ -769,12 +769,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicSubnets[0].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-1
@@ -872,7 +872,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-1
@@ -913,12 +913,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicSubnets[1].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-2
@@ -1016,7 +1016,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-2
@@ -1057,12 +1057,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-public-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicSubnets[2].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
           - name: nat-elastic-ip
@@ -1153,7 +1153,7 @@ spec:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.natGateway.publicSubnetName
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
               - type: CombineFromComposite
@@ -1227,7 +1227,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: private-route-default-1
@@ -1274,7 +1274,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: private-route-default-2
@@ -1321,7 +1321,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-0
@@ -1415,12 +1415,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.privateSubnets[0].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-1
@@ -1517,12 +1517,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.privateSubnets[1].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-2
@@ -1619,12 +1619,12 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-private-rt"
-                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels[portal-kombat.io/network-route-table-name]
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.privateSubnets[2].name
-                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-subnet-name]
                 policy:
                   fromFieldPath: Required
 
