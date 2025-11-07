@@ -1,9 +1,10 @@
 ---
-# Infrastructure Claims (VPC, EKS, S3, RDS, etc.)
+# ArgoCD application for deploying Crossplane provider configs
+# Manages authentication configurations for cross-account access
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-infrastructure-claims
+  name: dev-provider-configs
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -12,21 +13,21 @@ spec:
   source:
     repoURL: git@github.com:ims-platform-dev/portal-kombat.git
     targetRevision: main
-    path: environments/dev/infrastructure
+    path: infra-definitions/shared/configs/provider-configs
     directory:
-      recurse: true
+      include: '*.yaml'
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: crossplane-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - CreateNamespace=false  # crossplane-system already exists
     retry:
-      limit: 5
+      limit: 3
       backoff:
-        duration: 10s
+        duration: 5s
         factor: 2
-        maxDuration: 5m
+        maxDuration: 3m

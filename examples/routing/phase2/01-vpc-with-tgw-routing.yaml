@@ -1,0 +1,131 @@
+---
+# Example: VPC with Transit Gateway Routing
+# Demonstrates VPC connecting to Transit Gateway for inter-VPC communication
+#
+# Scenario: Development VPC (10.0.0.0/16) needs to route traffic to:
+# - Production VPC network (10.1.0.0/16)
+# - Staging VPC network (10.2.0.0/16)
+#
+# Prerequisites:
+# 1. Transit Gateway must exist with labels: environment=dev, portal-kombat.io/network-component=transit-gateway
+# 2. Transit Gateway attachment must be created separately (see examples/routing/phase1/02-tgw-with-attachment.yaml)
+---
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGateway
+metadata:
+  name: dev-hub-tgw
+  labels:
+    environment: dev
+    project: portal-kombat
+spec:
+  parameters:
+    region: us-east-2
+    amazonSideAsn: 64512
+    dnsSupport: true
+    vpnEcmpSupport: false
+    multicastSupport: false
+    defaultRouteTableAssociation: true
+    defaultRouteTablePropagation: true
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      purpose: hub-and-spoke-routing
+---
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: VPCNetwork
+metadata:
+  name: dev-spoke-vpc-a
+  labels:
+    environment: dev
+    project: portal-kombat
+    vpc-role: spoke
+spec:
+  parameters:
+    vpcCidr: 10.0.0.0/16
+    region: us-east-2
+    availabilityZones:
+      - us-east-2a
+      - us-east-2b
+      - us-east-2c
+    publicSubnets:
+      - name: dev-spoke-a-public-1a
+        cidr: 10.0.1.0/24
+        az: us-east-2a
+        mapPublicIpOnLaunch: true
+      - name: dev-spoke-a-public-1b
+        cidr: 10.0.2.0/24
+        az: us-east-2b
+        mapPublicIpOnLaunch: true
+      - name: dev-spoke-a-public-1c
+        cidr: 10.0.3.0/24
+        az: us-east-2c
+        mapPublicIpOnLaunch: true
+    privateSubnets:
+      - name: dev-spoke-a-private-1a
+        cidr: 10.0.11.0/24
+        az: us-east-2a
+      - name: dev-spoke-a-private-1b
+        cidr: 10.0.12.0/24
+        az: us-east-2b
+      - name: dev-spoke-a-private-1c
+        cidr: 10.0.13.0/24
+        az: us-east-2c
+    internetGateway:
+      enabled: true
+    natGateway:
+      enabled: true
+      publicSubnetName: dev-spoke-a-public-1a
+      allocateElasticIp: true
+    # Transit Gateway routing configuration
+    # Routes traffic destined for other VPC networks through Transit Gateway
+    transitGatewayRouting:
+      enabled: true
+      destinationCidrBlocks:
+        - 10.1.0.0/16  # Production VPC network
+        # Note: Currently only first CIDR is supported (more routes can be added in composition)
+        # - 10.2.0.0/16  # Staging VPC network (future enhancement)
+      transitGatewaySelector:
+        matchLabels:
+          environment: dev
+          portal-kombat.io/network-component: transit-gateway
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+  writeConnectionSecretToRef:
+    name: dev-spoke-vpc-a-connection
+    namespace: default
+---
+# Transit Gateway Attachment for VPC
+# Note: This attachment connects the VPC to the Transit Gateway
+# Without this, routes will fail to work even if configured correctly
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: dev-hub-tgw-to-spoke-a
+  labels:
+    environment: dev
+    project: portal-kombat
+spec:
+  parameters:
+    region: us-east-2
+    transitGatewaySelector:
+      matchLabels:
+        environment: dev
+        portal-kombat.io/network-component: transit-gateway
+    vpcSelector:
+      matchLabels:
+        environment: dev
+        vpc-role: spoke
+        portal-kombat.io/network-claim: dev-spoke-vpc-a
+    subnetSelectors:
+      - matchLabels:
+          environment: dev
+          portal-kombat.io/network-claim: dev-spoke-vpc-a
+          portal-kombat.io/network-tier: private
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      attachment-purpose: spoke-vpc-connectivity

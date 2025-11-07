@@ -88,6 +88,13 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              # Propagate claim labels to managed resource for selector-based binding
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels
+                toFieldPath: metadata.labels
+                policy:
+                  mergeOptions:
+                    keepMapValues: true
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.amazonSideAsn
                 toFieldPath: spec.forProvider.amazonSideAsn

@@ -1,0 +1,227 @@
+---
+# Example 2: Segmented Routing (Production/Non-Production Isolation)
+# Demonstrates traffic isolation using separate route tables
+#
+# This example creates:
+# 1. Transit Gateway (hub)
+# 2. Production VPC attachment
+# 3. Non-production VPC attachment
+# 4. Two route tables (prod-rt, nonprod-rt) with isolated routing
+# 5. Route table associations to enforce traffic segmentation
+#
+# Result: Production and non-production VPCs cannot communicate with each other,
+# but both can reach shared services (configured separately).
+#
+# Security Benefits:
+# - Production traffic isolation
+# - Blast radius containment
+# - Compliance requirement enforcement
+# - Independent routing policies
+
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGateway
+metadata:
+  name: segmented-routing-tgw
+  labels:
+    portal-kombat.io/example: segmented-routing
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    amazonSideAsn: 64513
+    dnsSupport: true
+    vpnEcmpSupport: true
+    defaultRouteTableAssociation: false  # Critical: Disable default association
+    defaultRouteTablePropagation: false  # Critical: Disable default propagation
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: multi
+      example: segmented-routing
+  writeConnectionSecretToRef:
+    name: segmented-routing-tgw-connection
+    namespace: crossplane-system
+
+---
+# Production VPC Attachment
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: segmented-prod-vpc-attachment
+  labels:
+    portal-kombat.io/example: segmented-routing
+    portal-kombat.io/environment: production
+    portal-kombat.io/tier: application
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: segmented-routing
+    vpcId: vpc-prod0123456789abc  # Replace with production VPC ID
+    subnetIds:
+      - subnet-prod0123456789ab0  # Replace with production subnet IDs
+      - subnet-prod0123456789ab1
+    dnsSupport: true
+    ipv6Support: false
+    applianceModeSupport: false
+    # Route table association: Will be associated with prod-rt
+    # (Association happens through route table's routeTableIds parameter)
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: production
+      tier: application
+      example: segmented-routing
+  writeConnectionSecretToRef:
+    name: segmented-prod-vpc-attachment-connection
+    namespace: crossplane-system
+
+---
+# Non-Production VPC Attachment
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: segmented-nonprod-vpc-attachment
+  labels:
+    portal-kombat.io/example: segmented-routing
+    portal-kombat.io/environment: non-production
+    portal-kombat.io/tier: application
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: segmented-routing
+    vpcId: vpc-nonprod0123456789  # Replace with non-prod VPC ID
+    subnetIds:
+      - subnet-nonprod01234567ab0  # Replace with non-prod subnet IDs
+      - subnet-nonprod01234567ab1
+    dnsSupport: true
+    ipv6Support: false
+    applianceModeSupport: false
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: non-production
+      tier: application
+      example: segmented-routing
+  writeConnectionSecretToRef:
+    name: segmented-nonprod-vpc-attachment-connection
+    namespace: crossplane-system
+
+---
+# Production Route Table (Isolated)
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayRouteTable
+metadata:
+  name: segmented-prod-rt
+  labels:
+    portal-kombat.io/example: segmented-routing
+    portal-kombat.io/environment: production
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: segmented-routing
+    # Route propagations: ONLY production VPCs propagate here
+    routePropagations:
+      - attachmentSelector:
+          matchLabels:
+            portal-kombat.io/example: segmented-routing
+            portal-kombat.io/environment: production
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: production
+      example: segmented-routing
+      purpose: production-isolation
+  writeConnectionSecretToRef:
+    name: segmented-prod-rt-connection
+    namespace: crossplane-system
+
+---
+# Non-Production Route Table (Isolated)
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayRouteTable
+metadata:
+  name: segmented-nonprod-rt
+  labels:
+    portal-kombat.io/example: segmented-routing
+    portal-kombat.io/environment: non-production
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: segmented-routing
+    # Route propagations: ONLY non-production VPCs propagate here
+    routePropagations:
+      - attachmentSelector:
+          matchLabels:
+            portal-kombat.io/example: segmented-routing
+            portal-kombat.io/environment: non-production
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: non-production
+      example: segmented-routing
+      purpose: nonprod-isolation
+  writeConnectionSecretToRef:
+    name: segmented-nonprod-rt-connection
+    namespace: crossplane-system
+
+---
+# Route Table Association Configuration
+# Note: In a complete implementation, you would add routeTableIds to the
+# attachment specs to create TransitGatewayRouteTableAssociation resources.
+#
+# Example (add to attachment spec.parameters):
+#   routeTableIds:
+#     - <prod-rt-id>  # For production attachment
+#     - <nonprod-rt-id>  # For non-production attachment
+#
+# Since we're using selectors, you would:
+# 1. Wait for route tables to be created
+# 2. Get route table IDs from status
+# 3. Update attachment specs with routeTableIds
+#
+# Alternatively, use a tool like ArgoCD wave annotations to order creation.
+
+---
+# Verification Commands:
+#
+# 1. Check all resources:
+#    kubectl get transitgateway,transitgatewayattachment,transitgatewayroutetable \
+#      -l portal-kombat.io/example=segmented-routing
+#
+# 2. Verify production isolation:
+#    kubectl describe transitgatewayroutetable segmented-prod-rt
+#    # Should show ONLY production attachments in propagatedAttachments[]
+#
+# 3. Verify non-production isolation:
+#    kubectl describe transitgatewayroutetable segmented-nonprod-rt
+#    # Should show ONLY non-production attachments in propagatedAttachments[]
+#
+# 4. Verify in AWS - Check route table associations:
+#    aws ec2 get-transit-gateway-route-table-associations \
+#      --filters "Name=resource-type,Values=vpc" \
+#      --region us-east-2
+#
+# 5. Verify route propagations:
+#    aws ec2 get-transit-gateway-route-table-propagations \
+#      --transit-gateway-route-table-id <prod-rt-id> \
+#      --region us-east-2
+#
+#    aws ec2 get-transit-gateway-route-table-propagations \
+#      --transit-gateway-route-table-id <nonprod-rt-id> \
+#      --region us-east-2
+#
+# 6. Test connectivity (should fail between prod and nonprod):
+#    # From production VPC, try to reach non-production VPC
+#    # Expected: Connection timeout (no route exists)

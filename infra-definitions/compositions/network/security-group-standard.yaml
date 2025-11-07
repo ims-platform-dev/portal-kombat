@@ -1,0 +1,2202 @@
+---
+# Security Group Composition
+#
+# Overview: Creates AWS Security Group with configurable ingress/egress rules
+# Naming Pattern: {environment}-{purpose}-sg
+# Rule Limits: Maximum 20 ingress + 20 egress rules per security group
+# Connection Secret: Exposes securityGroupId, securityGroupArn, vpcId
+# YAML Array Limitation: Uses pre-defined rule slots (0-19) with Optional policy to skip unused slots
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: security-group-standard
+  labels:
+    crossplane.io/xrd: xsecuritygroups.network.platform.example
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: network.platform.example/v1alpha1
+    kind: XSecurityGroup
+
+  mode: Pipeline
+
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+
+        patchSets:
+          - name: provider-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+
+          - name: standard-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  mergeOptions:
+                    appendSlice: true
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[0]
+                transforms:
+                  - type: map
+                    map:
+                      dev: '{"key":"Environment","value":"dev"}'
+                      staging: '{"key":"Environment","value":"staging"}'
+                      prod: '{"key":"Environment","value":"prod"}'
+                  - type: convert
+                    convert:
+                      toType: object
+                      format: json
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: '%s'
+                toFieldPath: spec.forProvider.tags[1]
+                transforms:
+                  - type: map
+                    map:
+                      '*': '{"key":"ManagedBy","value":"Crossplane"}'
+                  - type: convert
+                    convert:
+                      toType: object
+                      format: json
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: '%s'
+                toFieldPath: spec.forProvider.tags[2]
+                transforms:
+                  - type: map
+                    map:
+                      '*': '{"key":"Project","value":"portal-kombat"}'
+                  - type: convert
+                    convert:
+                      toType: object
+                      format: json
+
+        resources:
+          # Main SecurityGroup resource
+          - name: security-group
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "Managed by Crossplane"
+            patches:
+              # Generate name from environment and purpose
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.purpose
+                  strategy: string
+                  string:
+                    fmt: '%s-%s-sg'
+                toFieldPath: spec.forProvider.name
+
+              # VPC ID direct mapping
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcId
+                toFieldPath: spec.forProvider.vpcId
+                policy:
+                  fromFieldPath: Optional
+
+              # VPC ID from claim reference
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcIdRef.name
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[portal-kombat.io/network-claim]
+                policy:
+                  fromFieldPath: Optional
+
+              # Description with default transform
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.sgDescription
+                toFieldPath: spec.forProvider.description
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s"
+                policy:
+                  fromFieldPath: Optional
+
+              # Apply PatchSets
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
+
+              # Patch status fields to composite
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.securityGroupId
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.securityGroupArn
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: status.vpcId
+
+              # Note: Rule counts (ingressRuleCount, egressRuleCount) are not directly patchable
+              # Limitation: Crossplane function-patch-and-transform does not support array length calculation
+              # Workaround: Counts are implicitly derived from number of non-empty rules in claim spec
+              # Individual rule IDs not exposed in status due to Crossplane array indexing constraints with ToCompositeFieldPath
+              # For observability: Use kubectl to inspect individual SecurityGroupRule managed resources
+              # For production monitoring: Query AWS API directly if individual rule IDs or detailed counts needed
+
+            # Connection details for secret
+            connectionDetails:
+              - name: securityGroupId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+              - name: securityGroupArn
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.arn
+              - name: vpcId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.vpcId
+
+          # Pre-defined rule resources 0-19 - array index patching with Optional policy skips unused slots
+          # Provider reference resolution requires verification - see design.md 'Security Group Reference Resolution' section
+
+          # Ingress Rule 0
+          - name: ingress-rule-0
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[0].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 1
+          - name: ingress-rule-1
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[1].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 2
+          - name: ingress-rule-2
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[2].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 3
+          - name: ingress-rule-3
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[3].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 4
+          - name: ingress-rule-4
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[4].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+
+          # Ingress Rule 5
+          - name: ingress-rule-5
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[5].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 6
+          - name: ingress-rule-6
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[6].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 7
+          - name: ingress-rule-7
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[7].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 8
+          - name: ingress-rule-8
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[8].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 9
+          - name: ingress-rule-9
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[9].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 10
+          - name: ingress-rule-10
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[10].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 11
+          - name: ingress-rule-11
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[11].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 12
+          - name: ingress-rule-12
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[12].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 13
+          - name: ingress-rule-13
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[13].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 14
+          - name: ingress-rule-14
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[14].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 15
+          - name: ingress-rule-15
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[15].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 16
+          - name: ingress-rule-16
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[16].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 17
+          - name: ingress-rule-17
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[17].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 18
+          - name: ingress-rule-18
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[18].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Ingress Rule 19
+          - name: ingress-rule-19
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ingressRules[19].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 0
+          - name: egress-rule-0
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[0].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 1
+          - name: egress-rule-1
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[1].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 2
+          - name: egress-rule-2
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[2].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 3
+          - name: egress-rule-3
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[3].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 4
+          - name: egress-rule-4
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[4].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 5
+          - name: egress-rule-5
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[5].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 6
+          - name: egress-rule-6
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[6].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 7
+          - name: egress-rule-7
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[7].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 8
+          - name: egress-rule-8
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[8].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 9
+          - name: egress-rule-9
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[9].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 10
+          - name: egress-rule-10
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[10].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 11
+          - name: egress-rule-11
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[11].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 12
+          - name: egress-rule-12
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[12].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 13
+          - name: egress-rule-13
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[13].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 14
+          - name: egress-rule-14
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[14].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 15
+          - name: egress-rule-15
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[15].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 16
+          - name: egress-rule-16
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[16].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 17
+          - name: egress-rule-17
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[17].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 18
+          - name: egress-rule-18
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[18].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+          # Egress Rule 19
+          - name: egress-rule-19
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].protocol
+                toFieldPath: spec.forProvider.protocol
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].fromPort
+                toFieldPath: spec.forProvider.fromPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].toPort
+                toFieldPath: spec.forProvider.toPort
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].cidrBlocks
+                toFieldPath: spec.forProvider.cidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].ipv6CidrBlocks
+                toFieldPath: spec.forProvider.ipv6CidrBlocks
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].sourceSecurityGroupId
+                toFieldPath: spec.forProvider.sourceSecurityGroupId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.egressRules[19].description
+                toFieldPath: spec.forProvider.description
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+          # Default egress rule created when autoCreateDefaultEgress=true (default)
+          # Skipped via crossplane.io/skip annotation when false or when explicit egress rules defined
+          - name: egress-rule-default
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: egress
+                  protocol: "-1"
+                  fromPort: 0
+                  toPort: 0
+                  cidrBlocks:
+                    - "0.0.0.0/0"
+                  description: "Allow ALL outbound (auto-created default)"
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.autoCreateDefaultEgress
+                toFieldPath: metadata.annotations[crossplane.io/skip]
+                transforms:
+                  - type: convert
+                    convert:
+                      toType: string
+                  - type: map
+                    map:
+                      "false": "true"
+                      "true": "false"
+                policy:
+                  fromFieldPath: Optional
+              - type: PatchSet
+                patchSetName: provider-config
+
+# Security Group Reference Resolution (Future Feature)
+#
+# Current Limitation: Provider may not support SecurityGroupRef resolution
+#
+# Verification Steps Required:
+# 1. Check if SecurityGroupRule resource supports sourceSecurityGroupIdRef/sourceSecurityGroupIdSelector
+# 2. Test reference resolution between SecurityGroup XR and SecurityGroupRule managed resource
+# 3. Validate label propagation
+#
+# Placeholder Implementation (commented out):
+# - type: FromCompositeFieldPath
+#   fromFieldPath: spec.parameters.ingressRules[0].sourceSecurityGroupRef.name
+#   toFieldPath: spec.forProvider.sourceSecurityGroupIdSelector.matchLabels[crossplane.io/claim-name]
+#   policy:
+#     fromFieldPath: Optional
+#
+# Alternative Approaches:
+# - Function-KCL for custom resolution logic
+# - Go composition with full Crossplane SDK
+# - Manual workflow with direct SG IDs
+#
+# See design.md 'Security Group Reference Resolution' for complete analysis and implementation options

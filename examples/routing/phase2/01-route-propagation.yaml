@@ -1,0 +1,170 @@
+---
+# Example 1: Route Table with Route Propagation
+# Demonstrates automatic route learning from VPC attachments
+#
+# This example creates:
+# 1. Transit Gateway (hub)
+# 2. Two VPC attachments (app1-vpc, app2-vpc)
+# 3. Route table with propagation enabled for both attachments
+#
+# Result: Routes from app1-vpc and app2-vpc are automatically propagated
+# to the route table, enabling dynamic routing without static route configuration.
+
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGateway
+metadata:
+  name: route-propagation-demo-tgw
+  labels:
+    portal-kombat.io/example: route-propagation
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    amazonSideAsn: 64512
+    dnsSupport: true
+    vpnEcmpSupport: true
+    defaultRouteTableAssociation: false  # Disable default - we'll use custom route table
+    defaultRouteTablePropagation: false  # Disable default - we'll configure explicitly
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      example: route-propagation
+  writeConnectionSecretToRef:
+    name: route-propagation-demo-tgw-connection
+    namespace: crossplane-system
+
+---
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: route-propagation-app1-attachment
+  labels:
+    portal-kombat.io/example: route-propagation
+    portal-kombat.io/vpc: app1
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    # Use selector to bind to Transit Gateway
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: route-propagation
+    # Direct VPC ID (replace with your VPC ID)
+    # In production, use vpcIdSelector with matchLabels
+    vpcId: vpc-0123456789abcdef0  # Replace with actual VPC ID
+    # Direct subnet IDs (replace with your subnet IDs)
+    subnetIds:
+      - subnet-0123456789abcdef0  # Replace with actual subnet ID
+      - subnet-0123456789abcdef1  # Replace with actual subnet ID
+    dnsSupport: true
+    ipv6Support: false
+    applianceModeSupport: false
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      example: route-propagation
+      vpc: app1
+  writeConnectionSecretToRef:
+    name: route-propagation-app1-attachment-connection
+    namespace: crossplane-system
+
+---
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: route-propagation-app2-attachment
+  labels:
+    portal-kombat.io/example: route-propagation
+    portal-kombat.io/vpc: app2
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    # Use selector to bind to Transit Gateway
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: route-propagation
+    # Direct VPC ID (replace with your VPC ID)
+    vpcId: vpc-0123456789abcdef1  # Replace with actual VPC ID
+    # Direct subnet IDs (replace with your subnet IDs)
+    subnetIds:
+      - subnet-0123456789abcdef2  # Replace with actual subnet ID
+      - subnet-0123456789abcdef3  # Replace with actual subnet ID
+    dnsSupport: true
+    ipv6Support: false
+    applianceModeSupport: false
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      example: route-propagation
+      vpc: app2
+  writeConnectionSecretToRef:
+    name: route-propagation-app2-attachment-connection
+    namespace: crossplane-system
+
+---
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayRouteTable
+metadata:
+  name: route-propagation-shared-rt
+  labels:
+    portal-kombat.io/example: route-propagation
+    portal-kombat.io/demo: "true"
+spec:
+  parameters:
+    # Use selector to bind to Transit Gateway
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/example: route-propagation
+    # Route propagations: Enable automatic route learning from attachments
+    routePropagations:
+      # Propagation 1: Learn routes from app1-vpc
+      - attachmentSelector:
+          matchLabels:
+            portal-kombat.io/example: route-propagation
+            portal-kombat.io/vpc: app1
+      # Propagation 2: Learn routes from app2-vpc
+      - attachmentSelector:
+          matchLabels:
+            portal-kombat.io/example: route-propagation
+            portal-kombat.io/vpc: app2
+    region: us-east-2
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      example: route-propagation
+  writeConnectionSecretToRef:
+    name: route-propagation-shared-rt-connection
+    namespace: crossplane-system
+
+---
+# Verification Commands:
+#
+# 1. Check resource status:
+#    kubectl get transitgateway route-propagation-demo-tgw
+#    kubectl get transitgatewayattachment route-propagation-app1-attachment
+#    kubectl get transitgatewayattachment route-propagation-app2-attachment
+#    kubectl get transitgatewayroutetable route-propagation-shared-rt
+#
+# 2. Check route propagation status:
+#    kubectl describe transitgatewayroutetable route-propagation-shared-rt
+#    # Look for status.propagatedAttachments[] array
+#
+# 3. Verify in AWS Console:
+#    aws ec2 describe-transit-gateway-route-tables \
+#      --filters "Name=tag:example,Values=route-propagation" \
+#      --region us-east-2
+#
+#    aws ec2 get-transit-gateway-route-table-propagations \
+#      --transit-gateway-route-table-id <route-table-id> \
+#      --region us-east-2
+#
+# 4. Check propagated routes:
+#    aws ec2 search-transit-gateway-routes \
+#      --transit-gateway-route-table-id <route-table-id> \
+#      --filters "Name=type,Values=propagated" \
+#      --region us-east-2

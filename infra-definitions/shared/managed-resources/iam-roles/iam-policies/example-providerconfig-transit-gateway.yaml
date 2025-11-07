@@ -1,0 +1,95 @@
+# Example ProviderConfig for Transit Gateway Management
+#
+# This ProviderConfig uses IRSA (IAM Roles for Service Accounts) to authenticate
+# with AWS. The IAM role must have the CrossplaneTransitGatewayPolicy attached.
+#
+# Prerequisites:
+# 1. IAM policy created: CrossplaneTransitGatewayPolicy
+# 2. IAM role created: crossplane-sa-role
+# 3. Policy attached to role
+# 4. Service account annotated with role ARN
+#
+# Deployment:
+#   kubectl apply -f example-providerconfig-transit-gateway.yaml
+#
+---
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  labels:
+    portal-kombat.io/managed-by: crossplane
+spec:
+  # Use IRSA for authentication (recommended for EKS)
+  credentials:
+    source: InjectedIdentity
+
+---
+# Alternative: ProviderConfig with explicit region
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: us-east-2
+  labels:
+    portal-kombat.io/managed-by: crossplane
+    portal-kombat.io/region: us-east-2
+spec:
+  credentials:
+    source: InjectedIdentity
+  # Optional: Assume a different role for cross-account access
+  # assumeRoleARN: arn:aws:iam::123456789012:role/crossplane-assume-role
+
+---
+# Service Account Configuration (for reference)
+# This should already exist from EKS cluster bootstrap
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provider-aws-ec2
+  namespace: crossplane-system
+  annotations:
+    # This annotation links the SA to the IAM role via IRSA
+    eks.amazonaws.com/role-arn: arn:aws:iam::YOUR-ACCOUNT-ID:role/crossplane-sa-role
+  labels:
+    portal-kombat.io/managed-by: crossplane
+
+---
+# Example: Verification ConfigMap
+# Use this to document which IAM policies are required for your ProviderConfig
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crossplane-iam-requirements
+  namespace: crossplane-system
+  labels:
+    portal-kombat.io/component: documentation
+data:
+  required-policies: |
+    The following IAM policies must be attached to the crossplane-sa-role:
+
+    1. CrossplaneTransitGatewayPolicy
+       - Transit Gateway management
+       - VPC attachment operations
+       - Route table and route management
+
+    2. CrossplaneS3Policy (if using S3 compositions)
+       - S3 bucket management
+       - Object operations
+
+    3. CrossplaneVPCPolicy (if using VPC compositions)
+       - VPC lifecycle management
+       - Subnet and routing management
+
+  verification-commands: |
+    # Verify IRSA is configured correctly
+    kubectl get sa provider-aws-ec2 -n crossplane-system -o yaml | grep eks.amazonaws.com/role-arn
+
+    # Check provider is using the service account
+    kubectl get deployment -n crossplane-system provider-aws-ec2 -o yaml | grep serviceAccountName
+
+    # View IAM policies attached to the role
+    aws iam list-attached-role-policies --role-name crossplane-sa-role
+
+    # Test Transit Gateway permissions
+    kubectl apply -f examples/routing/phase1/01-simple-transit-gateway.yaml
+    kubectl describe transitgateway simple-tgw

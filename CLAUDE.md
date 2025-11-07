@@ -108,6 +108,123 @@ find environments/dev -name "*.yaml" -exec kubectl apply --dry-run=client -f {} 
 find . -name "*.yaml" -exec yamllint {} \;
 ```
 
+### Routing Infrastructure
+
+Portal Kombat provides Transit Gateway routing compositions for hub-and-spoke network topologies.
+
+```bash
+# Create Transit Gateway
+kubectl apply -f environments/dev/infrastructure/routing/transit-gateways/my-tgw.yaml
+
+# Attach VPC to Transit Gateway
+kubectl apply -f environments/dev/infrastructure/routing/attachments/vpc-attachment.yaml
+
+# Create route table with propagation
+kubectl apply -f environments/dev/infrastructure/routing/route-tables/main-rt.yaml
+
+# Check routing resources
+kubectl get transitgateway,transitgatewayattachment,transitgatewayroutetable
+
+# Check Transit Gateway status
+kubectl describe transitgateway my-hub-tgw
+
+# Verify AWS resources
+aws ec2 describe-transit-gateways --region us-east-2
+aws ec2 describe-transit-gateway-attachments --region us-east-2
+aws ec2 describe-transit-gateway-route-tables --region us-east-2
+
+# Check route propagations
+aws ec2 get-transit-gateway-route-table-propagations \
+  --transit-gateway-route-table-id tgw-rtb-xxx \
+  --region us-east-2
+
+# View propagated routes
+aws ec2 search-transit-gateway-routes \
+  --transit-gateway-route-table-id tgw-rtb-xxx \
+  --filters "Name=type,Values=propagated" \
+  --region us-east-2
+```
+
+**Quick Reference:**
+
+Simple Transit Gateway:
+```yaml
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGateway
+metadata:
+  name: my-hub-tgw
+spec:
+  parameters:
+    amazonSideAsn: 64512
+    dnsSupport: true
+    vpnEcmpSupport: true
+    defaultRouteTableAssociation: false
+    defaultRouteTablePropagation: false
+    region: us-east-2
+```
+
+VPC Attachment with Subnet Selector:
+```yaml
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayAttachment
+metadata:
+  name: app-vpc-attachment
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/purpose: networking
+    vpcIdSelector:
+      matchLabels:
+        portal-kombat.io/environment: dev
+    subnetSelector:
+      matchLabels:
+        portal-kombat.io/tier: private
+    region: us-east-2
+```
+
+Route Table with Propagation:
+```yaml
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: TransitGatewayRouteTable
+metadata:
+  name: main-route-table
+spec:
+  parameters:
+    transitGatewaySelector:
+      matchLabels:
+        portal-kombat.io/purpose: networking
+    routePropagations:
+      - attachmentSelector:
+          matchLabels:
+            portal-kombat.io/vpc: app1
+    region: us-east-2
+```
+
+**Common Patterns:**
+
+- **Hub-and-Spoke**: Centralized shared services VPC with spoke VPCs
+- **Traffic Segmentation**: Prod/nonprod isolation using separate route tables
+- **Route Propagation**: Automatic route learning from VPC attachments
+
+**Troubleshooting:**
+
+```bash
+# Check provider logs for routing resources
+kubectl logs -n crossplane-system -l pkg.crossplane.io/provider=provider-aws-ec2 --tail=50
+
+# Verify route propagations working
+kubectl describe transitgatewayroutetable <name> | grep propagatedAttachments
+
+# Check route table associations
+kubectl describe transitgatewayattachment <name> | grep associatedRouteTableIds
+```
+
+**See also:**
+- Comprehensive Guide: `docs/ROUTING_COMPOSITION.md`
+- Phase 1 Examples: `examples/routing/phase1/`
+- Phase 2 Examples: `examples/routing/phase2/`
+
 ## Architecture Patterns
 
 ### Crossplane: Managed Resources vs Compositions

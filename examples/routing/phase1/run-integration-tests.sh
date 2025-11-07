@@ -346,10 +346,10 @@ test_case_1_basic_tgw() {
         return 1
     fi
 
-    # Get status
+    # Get status (XRD status fields are at top level, not atProvider)
     local status=$(get_resource_status "transitgateway" "$resource_name")
-    local tgw_id=$(echo "$status" | jq -r '.status.atProvider.transitGatewayId // empty')
-    local state=$(echo "$status" | jq -r '.status.atProvider.state // empty')
+    local tgw_id=$(echo "$status" | jq -r '.status.transitGatewayId // empty')
+    local state=$(echo "$status" | jq -r '.status.state // empty')
 
     if [ -z "$tgw_id" ]; then
         log_error "Test Case 1 FAILED: Transit Gateway ID not found in status"

@@ -43,7 +43,7 @@ metadata:
   name: dev-k8s-cert-manager
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "10"  # After storage
+    argocd.argoproj.io/sync-wave: "10" 
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

@@ -1,0 +1,234 @@
+# Security Group XRD
+#
+# Naming Pattern: {environment}-{purpose}-sg
+# Example: dev-web-tier-sg, prod-database-tier-sg
+#
+# Rule Description Pattern: {Action} {Protocol}/{PortRange} {Direction} {Source/Destination}
+# Example: "Allow HTTPS from internet", "Allow PostgreSQL from app tier"
+#
+# Well-Known Ports:
+# - SSH: 22
+# - HTTP: 80
+# - HTTPS: 443
+# - PostgreSQL: 5432
+# - MySQL: 3306
+# - Redis: 6379
+# - Kubernetes API: 6443
+#
+# Rule Limits: Maximum 20 ingress rules + 20 egress rules per security group
+#
+# VPC Association:
+# - Use vpcId for direct VPC ID reference
+# - Use vpcIdRef.name for VPC claim reference
+# - Specify one, not both (enforced by oneOf validation)
+#
+# Security Group References:
+# - Use sourceSecurityGroupId for direct SG ID reference
+# - Use sourceSecurityGroupRef.name for SG claim reference (future feature)
+#
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xsecuritygroups.network.platform.example
+spec:
+  group: network.platform.example
+  names:
+    kind: XSecurityGroup
+    plural: xsecuritygroups
+  claimNames:
+    kind: SecurityGroup
+    plural: securitygroups
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - parameters
+              properties:
+                parameters:
+                  type: object
+                  required:
+                    - environment
+                    - purpose
+                  oneOf:
+                    - required: ["vpcId"]
+                    - required: ["vpcIdRef"]
+                  properties:
+                    environment:
+                      type: string
+                      description: "Environment name (e.g., dev, staging, prod)"
+                    purpose:
+                      type: string
+                      description: "Purpose identifier for security group (e.g., web-tier, database-tier, eks-nodes)"
+                    region:
+                      type: string
+                      default: us-east-2
+                      description: "AWS region for security group"
+                    vpcId:
+                      type: string
+                      description: "Direct VPC ID (use either vpcId OR vpcIdRef, not both)"
+                    vpcIdRef:
+                      type: object
+                      description: "Reference to VPC claim (use either vpcId OR vpcIdRef, not both)"
+                      required:
+                        - name
+                      properties:
+                        name:
+                          type: string
+                          description: "Name of VPC claim to reference"
+                    sgDescription:
+                      type: string
+                      description: "Description for the security group"
+                    providerConfig:
+                      type: string
+                      default: "default"
+                      description: "Provider configuration name"
+                    autoCreateDefaultEgress:
+                      type: boolean
+                      default: true
+                      description: "Auto-create 'allow all outbound' rule when no egress rules specified"
+                    tags:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      description: "Additional AWS tags"
+                    ingressRules:
+                      type: array
+                      maxItems: 20
+                      description: "Ingress rules (maximum 20)"
+                      items:
+                        type: object
+                        required:
+                          - protocol
+                          - fromPort
+                          - toPort
+                        properties:
+                          protocol:
+                            type: string
+                            description: "Protocol (tcp, udp, icmp, or -1 for all)"
+                          fromPort:
+                            type: integer
+                            minimum: 0
+                            maximum: 65535
+                            description: "Start of port range"
+                          toPort:
+                            type: integer
+                            minimum: 0
+                            maximum: 65535
+                            description: "End of port range"
+                          cidrBlocks:
+                            type: array
+                            items:
+                              type: string
+                            description: "IPv4 CIDR blocks"
+                          ipv6CidrBlocks:
+                            type: array
+                            items:
+                              type: string
+                            description: "IPv6 CIDR blocks"
+                          sourceSecurityGroupId:
+                            type: string
+                            description: "Source security group ID"
+                          sourceSecurityGroupRef:
+                            type: object
+                            description: "Reference to source security group claim"
+                            required:
+                              - name
+                            properties:
+                              name:
+                                type: string
+                          description:
+                            type: string
+                            description: "Rule description"
+                    egressRules:
+                      type: array
+                      maxItems: 20
+                      description: "Egress rules (maximum 20)"
+                      items:
+                        type: object
+                        required:
+                          - protocol
+                          - fromPort
+                          - toPort
+                        properties:
+                          protocol:
+                            type: string
+                            description: "Protocol (tcp, udp, icmp, or -1 for all)"
+                          fromPort:
+                            type: integer
+                            minimum: 0
+                            maximum: 65535
+                            description: "Start of port range"
+                          toPort:
+                            type: integer
+                            minimum: 0
+                            maximum: 65535
+                            description: "End of port range"
+                          cidrBlocks:
+                            type: array
+                            items:
+                              type: string
+                            description: "IPv4 CIDR blocks"
+                          ipv6CidrBlocks:
+                            type: array
+                            items:
+                              type: string
+                            description: "IPv6 CIDR blocks"
+                          sourceSecurityGroupId:
+                            type: string
+                            description: "Destination security group ID (AWS API uses sourceSecurityGroupId for both ingress source and egress destination)"
+                          sourceSecurityGroupRef:
+                            type: object
+                            description: "Reference to destination security group claim"
+                            required:
+                              - name
+                            properties:
+                              name:
+                                type: string
+                          description:
+                            type: string
+                            description: "Rule description"
+            status:
+              type: object
+              properties:
+                securityGroupId:
+                  type: string
+                  description: "AWS Security Group ID"
+                securityGroupArn:
+                  type: string
+                  description: "AWS Security Group ARN"
+                vpcId:
+                  type: string
+                  description: "VPC ID where security group is created"
+                ingressRuleCount:
+                  type: integer
+                  description: "Number of ingress rules created"
+                egressRuleCount:
+                  type: integer
+                  description: "Number of egress rules created"
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+  connectionSecretKeys:
+    - securityGroupId
+    - securityGroupArn
+    - vpcId

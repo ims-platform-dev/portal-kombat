@@ -443,7 +443,7 @@ kubectl logs -n crossplane-system -l pkg.crossplane.io/provider=provider-aws-ec2
 4. AWS API throttling
 
 **Solutions:**
-- Check IAM role permissions in `shared/managed-resources/iam-roles/iam-policies/`
+- Check IAM role permissions in `infra-definitions/shared/managed-resources/iam-roles/iam-policies/`
 - Verify AWS service quotas: `aws service-quotas list-service-quotas --service-code ec2`
 - Check resource dependencies: `kubectl get managed -n crossplane-system`
 - Wait and retry if API throttling

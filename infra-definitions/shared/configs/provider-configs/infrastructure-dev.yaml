@@ -1,0 +1,14 @@
+---
+# Dev account provider config with role chaining
+# Chains: Platform IRSA -> Management Account -> Dev Account
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: dev-account
+spec:
+  credentials:
+    source: IRSA
+  assumeRoleChain:
+    - roleARN: arn:aws:iam::873031875931:role/cross_account_management
+    - roleARN: arn:aws:iam::959946720450:role/cross_account_admin
+

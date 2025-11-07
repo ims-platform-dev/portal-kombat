@@ -1,0 +1,51 @@
+---
+# Example: VPC deployed in PRODUCTION AWS account
+# Uses role chaining: Platform IRSA -> Management -> Prod Account
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: VPCNetwork
+metadata:
+  name: prod-account-vpc
+  namespace: default
+spec:
+  parameters:
+    vpcCidr: 10.100.0.0/16
+    region: us-west-2  # Different region for prod
+    availabilityZones:
+      - us-west-2a
+      - us-west-2b
+      - us-west-2c
+    publicSubnets:
+      - name: prod-public-a
+        cidr: 10.100.0.0/20
+        az: us-west-2a
+      - name: prod-public-b
+        cidr: 10.100.16.0/20
+        az: us-west-2b
+      - name: prod-public-c
+        cidr: 10.100.32.0/20
+        az: us-west-2c
+    privateSubnets:
+      - name: prod-private-a
+        cidr: 10.100.48.0/20
+        az: us-west-2a
+      - name: prod-private-b
+        cidr: 10.100.64.0/20
+        az: us-west-2b
+      - name: prod-private-c
+        cidr: 10.100.80.0/20
+        az: us-west-2c
+    natGateway:
+      enabled: true  # Required for prod workloads
+      publicSubnetName: prod-public-a
+      allocateElasticIp: true
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: production
+      additional:
+        Account: prod-account
+        Compliance: required
+    providerConfig: prod-account  # ← Deploys to production account
+  writeConnectionSecretToRef:
+    name: prod-account-vpc-connection
+    namespace: crossplane-system

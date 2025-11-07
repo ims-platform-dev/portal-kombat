@@ -15,46 +15,73 @@ spec:
     helm:
       values: |
         secret:
-          secrets:
-            portClientId: "gWVcpoKHEkXO08XA9kkXzuIATv5POjij"
-            portClientSecret: "OntDC9LMg780GlKwZYZxIEknQMbZnYQ5nM7HX8wWfBG8TtvKRsy13xcZg8y8sILy"
+          existingSecret: port-credentials
 
-        # IMPORTANT: Override default EU endpoint with US endpoint
-        portBaseUrl: "https://api.us.getport.io"
+        portBaseUrl: "https://api.us.port.io"
+        clusterName: raiden-control-plane 
+        stateKey: raiden-control-plane 
+        
+        deleteDependentEntities: true
+        createMissingRelatedEntities: true
+        
+        eventListener:
+          type: KAFKA
+          brokers: "b-3-public.production.5v06xt.c21.kafka.us-east-1.amazonaws.com:9196,b-1-public.production.5v06xt.c21.kafka.us-east-1.amazonaws.com:9196,b-2-public.production.5v06xt.c21.kafka.us-east-1.amazonaws.com:9196"
+        
+        extraEnv:
+          - name: CLUSTER_NAME
+            value: raiden-control-plane
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1024Mi"
+            cpu: "500m"
 
         configMap:
-          resources:
-            - kind: ObjectStorage
-              selector:
-                query: .metadata.namespace | startswith("dev") or startswith("staging") or startswith("production")
-              port:
-                entity:
-                  mappings:
-                    identifier: .metadata.name
-                    title: .metadata.name
-                    blueprint: '"s3-bucket"'
-                    properties:
-                      bucketName: .spec.parameters.bucketName
-                      region: .spec.parameters.region // "us-east-2"
-                      environment: .metadata.namespace
-                      team: .metadata.labels.team
-                      purpose: .metadata.labels.purpose
-                      versioning: .spec.parameters.versioning // false
-                      encryption: .spec.parameters.encryption // "AES256"
-                      status: .status.conditions[] | select(.type=="Ready") | .status
-                      managedBy: '"Crossplane"'
-                      lastSynced: now | strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        scheduleInterval: 60
-
-        resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi
-
+          config: |
+            resources:
+              - kind: v1/namespaces
+                selector:
+                  query: '.metadata.name | IN("kube-system", "kube-public", "kube-node-lease") | not'
+                port:
+                  entity:
+                    mappings:
+                      - identifier: .metadata.name
+                        title: .metadata.name
+                        blueprint: '"k8sNamespace"'
+                        properties:
+                          creationTimestamp: .metadata.creationTimestamp
+                          labels: .metadata.labels
+                          phase: .status.phase
+                        relations:
+                          argocdCluster: '"raiden-control-plane"'
+        
+              - kind: apps/v1/deployments
+                selector:
+                  query: 'true'
+                port:
+                  entity:
+                    mappings:
+                      - identifier: .metadata.namespace + "-" + .metadata.name
+                        title: .metadata.name
+                        blueprint: '"k8sDeployment"'
+                        properties:
+                          namespace: .metadata.namespace
+                          replicas: .spec.replicas
+                          availableReplicas: .status.availableReplicas // 0
+                          images: '[.spec.template.spec.containers[].image]'
+                          creationTimestamp: .metadata.creationTimestamp
+                          strategy: .spec.strategy.type
+                        relations:
+                          k8sNamespace: .metadata.namespace
+                          argocdApplication: .metadata.labels."app.kubernetes.io/instance" // .metadata.annotations."argocd.argoproj.io/instance"
+                          ecrRepositories: |
+                            [.spec.template.spec.containers[].image] |
+                            map(select(contains(".dkr.ecr.") and contains(".amazonaws.com/"))) |
+                            map(split("/")[-1] | split(":")[0])
   destination:
     server: https://kubernetes.default.svc
     namespace: port-exporter

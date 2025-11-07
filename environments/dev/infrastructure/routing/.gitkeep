@@ -1,0 +1,25 @@
+# Transit Gateway Routing Claims
+
+This directory contains Transit Gateway routing infrastructure claims deployed via ArgoCD.
+
+## Directory Structure
+
+```
+routing/
+├── transit-gateways/     # Transit Gateway resources
+├── attachments/          # VPC attachment resources
+└── route-tables/         # Route table resources
+```
+
+## Deployment Order
+
+Resources are deployed with ArgoCD sync-wave annotations:
+- Wave 10: Transit Gateways
+- Wave 20: VPC Attachments
+- Wave 30: Route Tables
+
+This ensures proper dependency ordering during GitOps sync.
+
+## Examples
+
+See `examples/routing/phase1/` and `examples/routing/phase2/` for reference implementations.

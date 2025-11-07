@@ -847,7 +847,7 @@ Brief description of changes
 ### Documentation
 - 📖 [Architecture Deep Dive](docs/ARCHITECTURE.md)
 - 🚀 [Quick Start Guide](docs/QUICK-START.md)
-- 🔐 [IAM Setup Instructions](shared/managed-resources/iam-roles/SETUP-INSTRUCTIONS.md)
+- 🔐 [IAM Setup Instructions](infra-definitions/shared/managed-resources/iam-roles/iam-policies/README.md)
 - 📚 [Examples](examples/crossplane/)
 
 ### External Resources

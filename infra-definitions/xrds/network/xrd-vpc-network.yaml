@@ -123,6 +123,30 @@ spec:
                           type: boolean
                           description: Enable provisioning of an internet gateway and association with public route tables
                           default: true
+                    transitGatewayRouting:
+                      type: object
+                      description: Transit Gateway routing configuration for private subnets
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: Enable routing to Transit Gateway from private subnets
+                          default: false
+                        destinationCidrBlocks:
+                          type: array
+                          description: CIDR blocks to route through Transit Gateway (e.g., ["10.1.0.0/16", "10.2.0.0/16"] for other VPC networks)
+                          items:
+                            type: string
+                        transitGatewaySelector:
+                          type: object
+                          description: Label selector to find the Transit Gateway resource
+                          properties:
+                            matchLabels:
+                              type: object
+                              description: Labels to match for Transit Gateway selection
+                              additionalProperties:
+                                type: string
+                          required:
+                            - matchLabels
                     tags:
                       type: object
                       description: Tag values propagated to all managed AWS networking resources

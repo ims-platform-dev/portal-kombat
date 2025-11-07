@@ -1,7 +1,10 @@
 ---
 # Composition: Standard AWS Transit Gateway VPC Attachment
 # Implements the XTransitGatewayAttachment XRD for connecting VPCs to Transit Gateways
-# with selector-based resource binding and subnet filtering
+# with selector-based resource binding, subnet filtering, and route table association
+#
+# Phase 2: Route table association automatically generates TransitGatewayRouteTableAssociation
+# resources from the routeTableIds array, enabling traffic routing through specified route tables.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -202,9 +205,6 @@ spec:
                 fromFieldPath: status.atProvider.vpcOwnerId
                 toFieldPath: status.resourceOwnerId
 
-              # Note: associatedRouteTableIds is handled by route table associations
-              # which are separate resources not created in this composition
-
             connectionDetails:
               - name: attachmentId
                 type: FromFieldPath
@@ -215,3 +215,204 @@ spec:
               - name: vpcId
                 type: FromFieldPath
                 fromFieldPath: spec.forProvider.vpcId
+
+          # Route Table Association Resources (Phase 2)
+          # Note: Crossplane function-patch-and-transform doesn't support array iteration
+          # Users can associate up to 5 route tables by adding them to the routeTableIds array
+          # Each index (0-4) creates a separate TransitGatewayRouteTableAssociation resource
+
+          - name: route-table-association-0
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-association
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              # Label with claim name for reference
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+
+              # Attachment ID reference (from the attachment resource we created)
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Required
+
+              # Route Table ID (from array index 0)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routeTableIds[0]
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayRouteTableId
+                toFieldPath: status.associatedRouteTableIds[0]
+                policy:
+                  fromFieldPath: Optional
+          - name: route-table-association-1
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-association
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routeTableIds[1]
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayRouteTableId
+                toFieldPath: status.associatedRouteTableIds[1]
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-table-association-2
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-association
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routeTableIds[2]
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayRouteTableId
+                toFieldPath: status.associatedRouteTableIds[2]
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-table-association-3
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-association
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routeTableIds[3]
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayRouteTableId
+                toFieldPath: status.associatedRouteTableIds[3]
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-table-association-4
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-association
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routeTableIds[4]
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayRouteTableId
+                toFieldPath: status.associatedRouteTableIds[4]
+                policy:
+                  fromFieldPath: Optional

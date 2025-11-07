@@ -1,11 +1,13 @@
 ---
 # Composition: Standard AWS Transit Gateway Route Table
 # Implements the XTransitGatewayRouteTable XRD for managing Transit Gateway routing
-# with static route support
+# with route propagation and static route support
 #
-# Note: Phase 1 (Basic) - Static routes are managed as separate TransitGatewayRoute resources
-# that reference this route table. Phase 2 will add array-to-resource generation for
-# automatic static route creation from the staticRoutes array.
+# Phase 2: Route propagation automatically generates TransitGatewayRouteTablePropagation
+# resources from the routePropagations array, enabling automatic route learning from attachments.
+#
+# Note: Static routes are managed as separate TransitGatewayRoute resources
+# that reference this route table.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -124,7 +126,17 @@ spec:
                 toFieldPath: status.routeTableId
               # Note: TransitGatewayRouteTable doesn't expose a state field in AWS API
               # TransitGatewayRouteTable is immediately available once created
-              # State is derived from resource readiness (set to "available" when ID exists)
+              # Derive state: if ID exists, state is "available"
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.state
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: 'available'
+                policy:
+                  fromFieldPath: Optional
 
             connectionDetails:
               - name: routeTableId
@@ -133,3 +145,335 @@ spec:
               - name: transitGatewayId
                 type: FromFieldPath
                 fromFieldPath: spec.forProvider.transitGatewayId
+
+          # Route Propagation Resources (Phase 2)
+          # Note: Crossplane function-patch-and-transform doesn't support array iteration
+          # Users can create up to 10 propagations by adding them to the routePropagations array
+          # Each propagation index (0-9) creates a separate TransitGatewayRouteTablePropagation resource
+
+          - name: route-propagation-0
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTablePropagation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-propagation
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              # Label with claim name for reference
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+
+              # Route Table ID reference (from the route table resource we created)
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.routeTableId
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+
+              # Attachment ID - direct or selector-based (from array index 0)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[0].attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[0].attachmentSelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[0].attachmentSelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+
+              # Readiness check - only create if propagation entry exists at index 0
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[0]
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping for propagated attachments
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayAttachmentId
+                toFieldPath: status.propagatedAttachments[0].attachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.resourceId
+                toFieldPath: status.propagatedAttachments[0].state
+                transforms:
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-propagation-1
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTablePropagation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-propagation
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.routeTableId
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[1].attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[1].attachmentSelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[1].attachmentSelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[1]
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayAttachmentId
+                toFieldPath: status.propagatedAttachments[1].attachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.resourceId
+                toFieldPath: status.propagatedAttachments[1].state
+                transforms:
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-propagation-2
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTablePropagation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-propagation
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.routeTableId
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[2].attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[2].attachmentSelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[2].attachmentSelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[2]
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayAttachmentId
+                toFieldPath: status.propagatedAttachments[2].attachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.resourceId
+                toFieldPath: status.propagatedAttachments[2].state
+                transforms:
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-propagation-3
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTablePropagation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-propagation
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.routeTableId
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[3].attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[3].attachmentSelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[3].attachmentSelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[3]
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayAttachmentId
+                toFieldPath: status.propagatedAttachments[3].attachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.resourceId
+                toFieldPath: status.propagatedAttachments[3].state
+                transforms:
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                policy:
+                  fromFieldPath: Optional
+
+          - name: route-propagation-4
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTablePropagation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table-propagation
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.routeTableId
+                toFieldPath: spec.forProvider.transitGatewayRouteTableId
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[4].attachmentId
+                toFieldPath: spec.forProvider.transitGatewayAttachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[4].attachmentSelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[4].attachmentSelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayAttachmentIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.routePropagations[4]
+                policy:
+                  fromFieldPath: Required
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayAttachmentId
+                toFieldPath: status.propagatedAttachments[4].attachmentId
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.resourceId
+                toFieldPath: status.propagatedAttachments[4].state
+                transforms:
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                policy:
+                  fromFieldPath: Optional

@@ -1,0 +1,50 @@
+---
+# Web Tier Security Group
+#
+# Public-facing web tier security group - allows HTTP/HTTPS from internet, default egress enabled
+# Use case: Load balancers, web servers, public APIs
+apiVersion: network.platform.example/v1alpha1
+kind: SecurityGroup
+metadata:
+  name: web-tier
+  namespace: default
+spec:
+  parameters:
+    environment: dev
+    purpose: web-tier
+    region: us-east-2
+    vpcIdRef:
+      name: dev-vpc  # References existing VPC claim
+    providerConfig: dev-account
+
+    ingressRules:
+      # Allow HTTPS from Internet
+      - protocol: tcp
+        fromPort: 443
+        toPort: 443
+        cidrBlocks:
+          - 0.0.0.0/0
+        description: "Allow HTTPS/443 from Internet"
+
+      # Allow HTTP from Internet
+      - protocol: tcp
+        fromPort: 80
+        toPort: 80
+        cidrBlocks:
+          - 0.0.0.0/0
+        description: "Allow HTTP/80 from Internet"
+
+    egressRules:
+      # Allow all outbound
+      - protocol: "-1"
+        fromPort: 0
+        toPort: 0
+        cidrBlocks:
+          - 0.0.0.0/0
+        description: "Allow ALL outbound"
+
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      purpose: web-tier

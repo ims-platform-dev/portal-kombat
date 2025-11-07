@@ -1,0 +1,41 @@
+---
+# Example: VPC deployed in DEV AWS account (not platform account)
+# Uses role chaining: Platform IRSA -> Management -> Dev Account
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: VPCNetwork
+metadata:
+  name: dev-account-vpc
+  namespace: default
+spec:
+  parameters:
+    vpcCidr: 10.50.0.0/16
+    region: us-east-2
+    availabilityZones:
+      - us-east-2a
+      - us-east-2b
+    publicSubnets:
+      - name: dev-public-a
+        cidr: 10.50.0.0/20
+        az: us-east-2a
+      - name: dev-public-b
+        cidr: 10.50.16.0/20
+        az: us-east-2b
+    privateSubnets:
+      - name: dev-private-a
+        cidr: 10.50.32.0/20
+        az: us-east-2a
+      - name: dev-private-b
+        cidr: 10.50.48.0/20
+        az: us-east-2b
+    natGateway:
+      enabled: false  # Save costs in dev
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      additional:
+        Account: dev-account
+    providerConfig: dev-account  # ← This triggers cross-account deployment
+  writeConnectionSecretToRef:
+    name: dev-account-vpc-connection
+    namespace: crossplane-system

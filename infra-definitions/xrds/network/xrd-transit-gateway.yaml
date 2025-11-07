@@ -65,26 +65,9 @@ spec:
                       default: us-east-2
                     tags:
                       type: object
-                      description: Tag values propagated to Transit Gateway and related resources
-                      properties:
-                        managedBy:
-                          type: string
-                          description: ManagedBy tag value (e.g., Crossplane)
-                        project:
-                          type: string
-                          description: Project tag value (e.g., portal-kombat)
-                        environment:
-                          type: string
-                          description: Environment tag value (e.g., dev, staging, prod)
-                        additional:
-                          type: object
-                          description: Additional arbitrary AWS tags to apply
-                          additionalProperties:
-                            type: string
-                      required:
-                        - managedBy
-                        - project
-                        - environment
+                      description: Tag values propagated to Transit Gateway and related resources (key-value pairs)
+                      additionalProperties:
+                        type: string
                     providerConfig:
                       type: string
                       description: Name of the Crossplane ProviderConfig to use

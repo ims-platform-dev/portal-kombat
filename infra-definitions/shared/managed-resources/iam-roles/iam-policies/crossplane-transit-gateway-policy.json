@@ -1,0 +1,121 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TransitGatewayManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTransitGateway",
+        "ec2:DeleteTransitGateway",
+        "ec2:DescribeTransitGateways",
+        "ec2:ModifyTransitGateway",
+        "ec2:ModifyTransitGatewayOptions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-east-2",
+            "us-west-2"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TransitGatewayAttachmentManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTransitGatewayVpcAttachment",
+        "ec2:DeleteTransitGatewayVpcAttachment",
+        "ec2:DescribeTransitGatewayVpcAttachments",
+        "ec2:ModifyTransitGatewayVpcAttachment",
+        "ec2:AcceptTransitGatewayVpcAttachment",
+        "ec2:RejectTransitGatewayVpcAttachment"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-east-2",
+            "us-west-2"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TransitGatewayRouteTableManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTransitGatewayRouteTable",
+        "ec2:DeleteTransitGatewayRouteTable",
+        "ec2:DescribeTransitGatewayRouteTables",
+        "ec2:ModifyTransitGatewayRouteTable",
+        "ec2:AssociateTransitGatewayRouteTable",
+        "ec2:DisassociateTransitGatewayRouteTable",
+        "ec2:EnableTransitGatewayRouteTablePropagation",
+        "ec2:DisableTransitGatewayRouteTablePropagation",
+        "ec2:GetTransitGatewayRouteTablePropagations",
+        "ec2:GetTransitGatewayRouteTableAssociations"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-east-2",
+            "us-west-2"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TransitGatewayRouteManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTransitGatewayRoute",
+        "ec2:DeleteTransitGatewayRoute",
+        "ec2:ReplaceTransitGatewayRoute",
+        "ec2:SearchTransitGatewayRoutes",
+        "ec2:DescribeTransitGatewayRouteTableAnnouncements"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-east-2",
+            "us-west-2"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "VPCReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeRouteTables"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ResourceTagging",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags",
+        "ec2:DescribeTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:*:transit-gateway/*",
+        "arn:aws:ec2:*:*:transit-gateway-attachment/*",
+        "arn:aws:ec2:*:*:transit-gateway-route-table/*"
+      ]
+    }
+  ]
+}
