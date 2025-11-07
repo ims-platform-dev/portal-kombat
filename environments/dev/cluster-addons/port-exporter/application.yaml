@@ -16,31 +16,34 @@ spec:
       values: |
         secret:
           secrets:
-            portClientId: gWVcpoKHEkXO08XA9kkXzuIATv5POjij
-            portClientSecret: OntDC9LMg780GlKwZYZxIEknQMbZnYQ5nM7HX8wWfBG8TtvKRsy13xcZg8y8sILy
-            portBaseUrl: https://api.us.getport.io
+            portClientId: "gWVcpoKHEkXO08XA9kkXzuIATv5POjij"
+            portClientSecret: "OntDC9LMg780GlKwZYZxIEknQMbZnYQ5nM7HX8wWfBG8TtvKRsy13xcZg8y8sILy"
 
-        resources:
-          - kind: ObjectStorage
-            selector:
-              query: .metadata.namespace | startswith("dev") or startswith("staging") or startswith("production")
-            port:
-              entity:
-                mappings:
-                  identifier: .metadata.name
-                  title: .metadata.name
-                  blueprint: '"s3-bucket"'
-                  properties:
-                    bucketName: .spec.parameters.bucketName
-                    region: .spec.parameters.region // "us-east-2"
-                    environment: .metadata.namespace
-                    team: .metadata.labels.team
-                    purpose: .metadata.labels.purpose
-                    versioning: .spec.parameters.versioning // false
-                    encryption: .spec.parameters.encryption // "AES256"
-                    status: .status.conditions[] | select(.type=="Ready") | .status
-                    managedBy: '"Crossplane"'
-                    lastSynced: now | strftime("%Y-%m-%dT%H:%M:%SZ")
+        # IMPORTANT: Override default EU endpoint with US endpoint
+        portBaseUrl: "https://api.us.getport.io"
+
+        configMap:
+          resources:
+            - kind: ObjectStorage
+              selector:
+                query: .metadata.namespace | startswith("dev") or startswith("staging") or startswith("production")
+              port:
+                entity:
+                  mappings:
+                    identifier: .metadata.name
+                    title: .metadata.name
+                    blueprint: '"s3-bucket"'
+                    properties:
+                      bucketName: .spec.parameters.bucketName
+                      region: .spec.parameters.region // "us-east-2"
+                      environment: .metadata.namespace
+                      team: .metadata.labels.team
+                      purpose: .metadata.labels.purpose
+                      versioning: .spec.parameters.versioning // false
+                      encryption: .spec.parameters.encryption // "AES256"
+                      status: .status.conditions[] | select(.type=="Ready") | .status
+                      managedBy: '"Crossplane"'
+                      lastSynced: now | strftime("%Y-%m-%dT%H:%M:%SZ")
 
         scheduleInterval: 60
 
