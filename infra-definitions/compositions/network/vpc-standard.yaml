@@ -102,8 +102,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.vpcId
-                policy:
-                  toFieldPath: Optional
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -120,8 +118,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: metadata.annotations[portal-kombat.io/public-subnet-ids]
                 toFieldPath: status.publicSubnetIdsCsv
-                policy:
-                  toFieldPath: Optional
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -138,8 +134,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: metadata.annotations[portal-kombat.io/private-subnet-ids]
                 toFieldPath: status.privateSubnetIdsCsv
-                policy:
-                  toFieldPath: Optional
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -156,8 +150,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: metadata.annotations[portal-kombat.io/public-route-table-ids]
                 toFieldPath: status.publicRouteTableIdsCsv
-                policy:
-                  toFieldPath: Optional
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -174,8 +166,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: metadata.annotations[portal-kombat.io/private-route-table-ids]
                 toFieldPath: status.privateRouteTableIdsCsv
-                policy:
-                  toFieldPath: Optional
             connectionDetails:
               - name: vpcId
                 type: FromFieldPath
@@ -233,8 +223,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.internetGatewayId
-                policy:
-                  toFieldPath: Optional
             connectionDetails:
               - name: internetGatewayId
                 type: FromFieldPath
@@ -336,8 +324,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicSubnets[0].id
-                policy:
-                  toFieldPath: Optional
           - name: public-subnet-1
             patches:
               - type: PatchSet
@@ -405,8 +391,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicSubnets[1].id
-                policy:
-                  toFieldPath: Optional
           - name: public-subnet-2
             patches:
               - type: PatchSet
@@ -474,8 +458,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicSubnets[2].id
-                policy:
-                  toFieldPath: Optional
           - name: private-subnet-0
             patches:
               - type: PatchSet
@@ -543,8 +525,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[0].id
-                policy:
-                  toFieldPath: Optional
           - name: private-subnet-1
             patches:
               - type: PatchSet
@@ -612,8 +592,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[1].id
-                policy:
-                  toFieldPath: Optional
           - name: private-subnet-2
             patches:
               - type: PatchSet
@@ -681,8 +659,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[2].id
-                policy:
-                  toFieldPath: Optional
           - name: public-route-table-0
             patches:
               - type: PatchSet
@@ -739,8 +715,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicRouteTables[0].id
-                policy:
-                  toFieldPath: Optional
           - name: public-route-default-0
             patches:
               - type: PatchSet
@@ -885,8 +859,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicRouteTables[1].id
-                policy:
-                  toFieldPath: Optional
           - name: public-route-default-1
             patches:
               - type: PatchSet
@@ -1031,8 +1003,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.publicRouteTables[2].id
-                policy:
-                  toFieldPath: Optional
           - name: public-route-default-2
             patches:
               - type: PatchSet
@@ -1235,8 +1205,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.natGatewayId
-                policy:
-                  toFieldPath: Optional
             connectionDetails:
               - name: natGatewayId
                 type: FromFieldPath
@@ -1537,8 +1505,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateRouteTables[1].id
-                policy:
-                  toFieldPath: Optional
           - name: private-route-table-association-1
             patches:
               - type: PatchSet
@@ -1641,8 +1607,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateRouteTables[2].id
-                policy:
-                  toFieldPath: Optional
           - name: private-route-table-association-2
             patches:
               - type: PatchSet
