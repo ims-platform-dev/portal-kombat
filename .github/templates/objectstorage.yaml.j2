@@ -1,0 +1,43 @@
+apiVersion: aws.platform.example/v1alpha1
+kind: ObjectStorage
+metadata:
+  name: {{ claim_name }}
+  namespace: {{ environment }}
+  labels:
+    environment: {{ environment }}
+    team: {{ team }}
+    purpose: {{ purpose }}
+    managed-by: crossplane
+    requested-via: port-io
+  annotations:
+    port.io/run-id: "{{ port_run_id }}"
+    requested-by: "{{ requestor }}"
+    requested-at: "{{ requested_at }}"
+spec:
+  parameters:
+    bucketName: {{ bucket_name }}
+    region: {{ region }}
+    versioning: {{ versioning | lower }}
+    encryption: {{ encryption }}
+    {% if lifecycle_policy != "none" %}
+    lifecyclePolicy: {{ lifecycle_policy }}
+    {% endif %}
+    {% if public_access %}
+    publicAccess: true
+    {% endif %}
+    tags:
+      Environment: {{ environment }}
+      Team: {{ team }}
+      Purpose: {{ purpose }}
+      {% if cost_center %}
+      CostCenter: {{ cost_center }}
+      {% endif %}
+      ManagedBy: Crossplane
+      RequestedBy: {{ requestor }}
+      PortRunId: {{ port_run_id }}
+  compositionSelector:
+    matchLabels:
+      type: standard-s3
+  writeConnectionSecretToRef:
+    name: {{ claim_name }}-connection
+    namespace: {{ environment }}

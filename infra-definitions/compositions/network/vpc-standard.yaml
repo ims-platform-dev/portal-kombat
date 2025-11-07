@@ -1,0 +1,1618 @@
+---
+# Composition: Standard AWS VPC core resources
+# Implements the XVPCNetwork XRD with baseline VPC, tagging, and internet gateway wiring
+# NOTE: NAT gateways incur additional hourly and data transfer charges—enable only when private workloads require outbound internet access.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: vpc-standard
+  labels:
+    crossplane.io/xrd: xvpcnetworks.aws.plt.intelerad.io
+    provider: aws
+    network-layer: core
+spec:
+  compositeTypeRef:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    kind: XVPCNetwork
+  mode: Pipeline
+  pipeline:
+    - step: vpc-core
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+          - name: provider-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+                policy:
+                  fromFieldPath: Optional
+          - name: standard-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.managedBy
+                toFieldPath: spec.forProvider.tags.ManagedBy
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.project
+                toFieldPath: spec.forProvider.tags.Project
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.environment
+                toFieldPath: spec.forProvider.tags.Environment
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.additional
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+        resources:
+          - name: vpc
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: VPC
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: vpc
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  cidrBlock: 10.0.0.0/16
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcCidr
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.vpcId
+                policy:
+                  toFieldPath: Optional
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: status.publicSubnets[0].id
+                    - fromFieldPath: status.publicSubnets[1].id
+                    - fromFieldPath: status.publicSubnets[2].id
+                  strategy: string
+                  string:
+                    fmt: "%s,%s,%s"
+                toFieldPath: metadata.annotations[portal-kombat.io/public-subnet-ids]
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/public-subnet-ids]
+                toFieldPath: status.publicSubnetIdsCsv
+                policy:
+                  toFieldPath: Optional
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: status.privateSubnets[0].id
+                    - fromFieldPath: status.privateSubnets[1].id
+                    - fromFieldPath: status.privateSubnets[2].id
+                  strategy: string
+                  string:
+                    fmt: "%s,%s,%s"
+                toFieldPath: metadata.annotations[portal-kombat.io/private-subnet-ids]
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/private-subnet-ids]
+                toFieldPath: status.privateSubnetIdsCsv
+                policy:
+                  toFieldPath: Optional
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: status.publicRouteTables[0].id
+                    - fromFieldPath: status.publicRouteTables[1].id
+                    - fromFieldPath: status.publicRouteTables[2].id
+                  strategy: string
+                  string:
+                    fmt: "%s,%s,%s"
+                toFieldPath: metadata.annotations[portal-kombat.io/public-route-table-ids]
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/public-route-table-ids]
+                toFieldPath: status.publicRouteTableIdsCsv
+                policy:
+                  toFieldPath: Optional
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: status.privateRouteTables[0].id
+                    - fromFieldPath: status.privateRouteTables[1].id
+                    - fromFieldPath: status.privateRouteTables[2].id
+                  strategy: string
+                  string:
+                    fmt: "%s,%s,%s"
+                toFieldPath: metadata.annotations[portal-kombat.io/private-route-table-ids]
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/private-route-table-ids]
+                toFieldPath: status.privateRouteTableIdsCsv
+                policy:
+                  toFieldPath: Optional
+            connectionDetails:
+              - name: vpcId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+              - name: publicSubnetIds
+                type: FromFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/public-subnet-ids]
+              - name: privateSubnetIds
+                type: FromFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/private-subnet-ids]
+              - name: publicRouteTableIds
+                type: FromFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/public-route-table-ids]
+              - name: privateRouteTableIds
+                type: FromFieldPath
+                fromFieldPath: metadata.annotations[portal-kombat.io/private-route-table-ids]
+          - name: internet-gateway
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: InternetGateway
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: internet-gateway
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.internetGatewayId
+                policy:
+                  toFieldPath: Optional
+            connectionDetails:
+              - name: internetGatewayId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+          - name: internet-gateway-attachment
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: InternetGatewayAttachment
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: internet-gateway-attachment
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  internetGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: internet-gateway
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+          - name: public-subnet-0
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: true
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicSubnets[0].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-subnet-1
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: true
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicSubnets[1].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-subnet-2
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: true
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicSubnets[2].id
+                policy:
+                  toFieldPath: Optional
+          - name: private-subnet-0
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: false
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.privateSubnets[0].id
+                policy:
+                  toFieldPath: Optional
+          - name: private-subnet-1
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: false
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.privateSubnets[1].id
+                policy:
+                  toFieldPath: Optional
+          - name: private-subnet-2
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: false
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].name
+                toFieldPath: metadata.labels[portal-kombat.io/network-subnet-name]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].az
+                toFieldPath: spec.forProvider.availabilityZone
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].mapPublicIpOnLaunch
+                toFieldPath: spec.forProvider.mapPublicIpOnLaunch
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].name
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.privateSubnets[2].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-route-table-0
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicRouteTables[0].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-route-default-0
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  gatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: internet-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: public-route-table-association-0
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[0].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+          - name: public-route-table-1
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicRouteTables[1].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-route-default-1
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  gatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: internet-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: public-route-table-association-1
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[1].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+          - name: public-route-table-2
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.publicRouteTables[2].id
+                policy:
+                  toFieldPath: Optional
+          - name: public-route-default-2
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  gatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: internet-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: public-route-table-association-2
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: public
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.publicSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-public-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicSubnets[2].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+          - name: nat-elastic-ip
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: EIP
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: nat-elastic-ip
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  domain: vpc
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: metadata.labels[portal-kombat.io/network-nat-source-subnet]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                  strategy: string
+                  string:
+                    fmt: "%s-nat-eip"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+          - name: nat-gateway
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: NATGateway
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: nat-gateway
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  connectivityType: public
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                  allocationIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: nat-elastic-ip
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: metadata.labels[portal-kombat.io/network-nat-source-subnet]
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                  strategy: string
+                  string:
+                    fmt: "%s-nat-gateway"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.natGatewayId
+                policy:
+                  toFieldPath: Optional
+            connectionDetails:
+              - name: natGatewayId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+          - name: private-route-default-0
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  natGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: nat-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: metadata.labels[portal-kombat.io/network-nat-source-subnet]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-default-1
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  natGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: nat-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: metadata.labels[portal-kombat.io/network-nat-source-subnet]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-default-2
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Route
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  destinationCidrBlock: 0.0.0.0/0
+                  natGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: nat-gateway
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.natGateway.publicSubnetName
+                toFieldPath: metadata.labels[portal-kombat.io/network-nat-source-subnet]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-table-0
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-table-association-0
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[0].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[0].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-table-1
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.privateRouteTables[1].id
+                policy:
+                  toFieldPath: Optional
+          - name: private-route-table-association-1
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[1].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[1].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+          - name: private-route-table-2
+            patchSets:
+              - provider-config
+              - region
+              - standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: metadata.labels[portal-kombat.io/network-route-table-name]
+                policy:
+                  fromFieldPath: Required
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.tags.Name
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.privateRouteTables[2].id
+                policy:
+                  toFieldPath: Optional
+          - name: private-route-table-association-2
+            patchSets:
+              - provider-config
+              - region
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: RouteTableAssociation
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: route-table-association
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  routeTableIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-route-table-name: placeholder
+                  subnetIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-subnet-name: placeholder
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.privateSubnets[2].name
+                  strategy: string
+                  string:
+                    fmt: "%s-private-rt"
+                toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.portal-kombat.io/network-route-table-name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.privateSubnets[2].name
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.portal-kombat.io/network-subnet-name
+                policy:
+                  fromFieldPath: Required
+

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: port-sync
+  labels:
+    name: port-sync
+    environment: dev
+    managed-by: argocd
+    app.kubernetes.io/name: port-sync
+    app.kubernetes.io/component: integration

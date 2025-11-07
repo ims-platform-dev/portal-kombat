@@ -1,0 +1,212 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-github-runners
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/actions/actions-runner-controller
+    targetRevision: 0.27.5
+    path: charts/gha-runner-scale-set-controller
+    helm:
+      values: |
+        # Actions Runner Controller Configuration
+        # Manages self-hosted GitHub Actions runners in Kubernetes
+
+        # Controller configuration
+        replicaCount: 1
+
+        image:
+          repository: ghcr.io/actions/actions-runner-controller
+          tag: 0.27.5
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+        # GitHub App authentication
+        authSecret:
+          create: false
+          name: github-app-credentials
+
+        # Metrics
+        metrics:
+          serviceMonitor:
+            enabled: true
+          port: 8080
+
+        # RBAC
+        serviceAccount:
+          create: true
+          name: actions-runner-controller
+
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 1000
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: github-runners
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: github-runners
+  labels:
+    name: github-runners
+    environment: dev
+    managed-by: argocd
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: portal-kombat-runners
+  namespace: github-runners
+spec:
+  # Number of runner replicas
+  replicas: 2
+
+  template:
+    spec:
+      # GitHub repository
+      repository: your-org/portal-kombat
+
+      # Runner labels
+      labels:
+        - self-hosted
+        - linux
+        - x64
+        - portal-kombat
+        - dev
+
+      # Ephemeral runners (destroyed after each job)
+      ephemeral: true
+
+      # Docker-in-Docker for workflow containerization
+      dockerdWithinRunnerContainer: true
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 2
+          memory: 2Gi
+
+      # Node selector
+      nodeSelector:
+        workload-type: github-runners
+
+      # Tolerations
+      tolerations:
+        - key: "workload-type"
+          operator: "Equal"
+          value: "github-runners"
+          effect: "NoSchedule"
+
+      # Security context
+      securityContext:
+        fsGroup: 1000
+
+      # Service account
+      serviceAccountName: github-runner
+
+      # Volume mounts for workspace
+      volumeMounts:
+        - name: work
+          mountPath: /runner/_work
+
+      volumes:
+        - name: work
+          emptyDir: {}
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: portal-kombat-runners-autoscaler
+  namespace: github-runners
+spec:
+  # Target runner deployment
+  scaleTargetRef:
+    name: portal-kombat-runners
+
+  # Autoscaling configuration
+  minReplicas: 2
+  maxReplicas: 10
+
+  # Scale based on workflow queue depth
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - your-org/portal-kombat
+
+  # Scale-down behavior
+  scaleDownDelaySecondsAfterScaleOut: 300
+  scaleUpTriggers:
+    - duration: 1m
+      amount: 1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: github-runner
+  namespace: github-runners
+  labels:
+    app: github-runner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: github-runner
+  namespace: github-runners
+spec:
+  rules:
+    # Allow runners to read secrets (for GitHub credentials)
+    - apiGroups: [""]
+      resources: ["secrets"]
+      verbs: ["get", "list"]
+    # Allow runners to read configmaps
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: github-runner
+  namespace: github-runners
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: github-runner
+subjects:
+  - kind: ServiceAccount
+    name: github-runner
+    namespace: github-runners

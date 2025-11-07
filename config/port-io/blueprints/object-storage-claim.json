@@ -1,0 +1,147 @@
+{
+  "identifier": "object-storage-claim",
+  "title": "ObjectStorage Claim",
+  "icon": "Blueprint",
+  "schema": {
+    "properties": {
+      "claimName": {
+        "title": "Claim Name",
+        "type": "string",
+        "description": "Kubernetes ObjectStorage claim name"
+      },
+      "purpose": {
+        "title": "Purpose",
+        "type": "string",
+        "description": "Business purpose of this storage (e.g., 'user-uploads', 'backups')"
+      },
+      "bucketName": {
+        "title": "Requested Bucket Name",
+        "type": "string",
+        "description": "Desired S3 bucket name (must be globally unique)"
+      },
+      "region": {
+        "title": "AWS Region",
+        "type": "string",
+        "enum": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1"],
+        "default": "us-east-2",
+        "description": "AWS region for bucket deployment"
+      },
+      "environment": {
+        "title": "Environment",
+        "type": "string",
+        "enum": ["dev", "staging", "production"],
+        "description": "Target deployment environment"
+      },
+      "versioning": {
+        "title": "Enable Versioning",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable S3 bucket versioning for data protection"
+      },
+      "encryption": {
+        "title": "Encryption Type",
+        "type": "string",
+        "enum": ["AES256", "aws:kms"],
+        "default": "AES256",
+        "description": "Server-side encryption method"
+      },
+      "lifecyclePolicy": {
+        "title": "Lifecycle Policy",
+        "type": "string",
+        "enum": ["none", "transition-to-glacier-30d", "expire-old-versions-90d"],
+        "default": "none",
+        "description": "S3 lifecycle policy for cost optimization"
+      },
+      "publicAccess": {
+        "title": "Public Access",
+        "type": "boolean",
+        "default": false,
+        "description": "Allow public read access (use with caution)"
+      },
+      "status": {
+        "title": "Provisioning Status",
+        "type": "string",
+        "enum": ["Pending", "Provisioning", "Ready", "Failed", "Deleting"],
+        "description": "Current provisioning status"
+      },
+      "statusMessage": {
+        "title": "Status Message",
+        "type": "string",
+        "description": "Detailed status information"
+      },
+      "team": {
+        "title": "Team",
+        "type": "string",
+        "description": "Owning team name"
+      },
+      "requestedBy": {
+        "title": "Requested By",
+        "type": "string",
+        "description": "User who requested this resource"
+      },
+      "approvedBy": {
+        "title": "Approved By",
+        "type": "string",
+        "description": "User who approved provisioning (for staging/prod)"
+      },
+      "namespace": {
+        "title": "Kubernetes Namespace",
+        "type": "string",
+        "description": "Namespace where claim is created"
+      },
+      "compositionSelector": {
+        "title": "Composition",
+        "type": "string",
+        "description": "Crossplane composition used"
+      },
+      "createdAt": {
+        "title": "Created At",
+        "type": "string",
+        "format": "date-time",
+        "description": "Claim creation timestamp"
+      },
+      "provisionedAt": {
+        "title": "Provisioned At",
+        "type": "string",
+        "format": "date-time",
+        "description": "When underlying S3 bucket was provisioned"
+      },
+      "lastSynced": {
+        "title": "Last Synced",
+        "type": "string",
+        "format": "date-time",
+        "description": "Last Port.io sync timestamp"
+      }
+    },
+    "required": ["claimName", "purpose", "environment", "status"]
+  },
+  "calculationProperties": {},
+  "mirrorProperties": {
+    "actualBucketName": {
+      "title": "Actual Bucket Name",
+      "path": "bucket.bucketName"
+    },
+    "bucketStatus": {
+      "title": "Bucket Status",
+      "path": "bucket.status"
+    },
+    "bucketArn": {
+      "title": "Bucket ARN",
+      "path": "bucket.arn"
+    }
+  },
+  "relations": {
+    "bucket": {
+      "title": "Provisioned S3 Bucket",
+      "target": "s3-bucket",
+      "required": false,
+      "many": false
+    },
+    "cluster": {
+      "title": "EKS Cluster",
+      "target": "eks-cluster",
+      "required": false,
+      "many": false
+    }
+  }
+}

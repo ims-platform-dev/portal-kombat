@@ -1,0 +1,173 @@
+---
+# XRD (CompositeResourceDefinition) for AWS VPC network stacks claimed via Crossplane
+# Defines the XVPCNetwork composite and VPCNetwork claim schema for standardized VPC provisioning
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xvpcnetworks.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XVPCNetwork
+    plural: xvpcnetworks
+  claimNames:
+    kind: VPCNetwork
+    plural: vpcnetworks
+  defaultCompositionRef:
+    name: vpc-standard
+  connectionSecretKeys:
+    - vpcId
+    - publicSubnetIds
+    - privateSubnetIds
+    - publicRouteTableIds
+    - privateRouteTableIds
+    - internetGatewayId
+    - natGatewayId
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Parameters controlling AWS VPC, subnet, routing, and gateway configuration
+                  properties:
+                    vpcCidr:
+                      type: string
+                      description: Primary IPv4 CIDR block for the VPC (for example, 10.0.0.0/16)
+                    secondaryCidrs:
+                      type: array
+                      description: Optional additional IPv4 CIDR blocks to associate with the VPC
+                      items:
+                        type: string
+                    region:
+                      type: string
+                      description: AWS region for all managed resources
+                      default: us-east-2
+                    availabilityZones:
+                      type: array
+                      description: Ordered list of AWS availability zones that subnets should target
+                      items:
+                        type: string
+                      minItems: 1
+                    publicSubnets:
+                      type: array
+                      description: Definitions for each public subnet to create within the VPC
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Logical name for the subnet used as a Crossplane identifier
+                          cidr:
+                            type: string
+                            description: IPv4 CIDR block for the subnet
+                          az:
+                            type: string
+                            description: Availability zone for the subnet (must match an entry in availabilityZones)
+                          mapPublicIpOnLaunch:
+                            type: boolean
+                            description: Whether new instances launched into the subnet receive public IP addresses automatically
+                            default: true
+                        required:
+                          - name
+                          - cidr
+                          - az
+                      minItems: 1
+                    privateSubnets:
+                      type: array
+                      description: Definitions for each private subnet to create within the VPC
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Logical name for the subnet used as a Crossplane identifier
+                          cidr:
+                            type: string
+                            description: IPv4 CIDR block for the subnet
+                          az:
+                            type: string
+                            description: Availability zone for the subnet (must match an entry in availabilityZones)
+                        required:
+                          - name
+                          - cidr
+                          - az
+                      minItems: 1
+                    natGateway:
+                      type: object
+                      description: NAT gateway configuration for enabling outbound internet access from private subnets
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: Enable creation of a managed NAT gateway in the designated public subnet
+                          default: false
+                        publicSubnetName:
+                          type: string
+                          description: Name of the public subnet that should host the NAT gateway (required when enabled)
+                        allocateElasticIp:
+                          type: boolean
+                          description: Allocate and attach a new Elastic IP (set false to reference an existing EIP by annotation in composition)
+                          default: true
+                    internetGateway:
+                      type: object
+                      description: Internet gateway configuration for public subnets
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: Enable provisioning of an internet gateway and association with public route tables
+                          default: true
+                    tags:
+                      type: object
+                      description: Tag values propagated to all managed AWS networking resources
+                      properties:
+                        managedBy:
+                          type: string
+                          description: ManagedBy tag value (for example, Crossplane)
+                        project:
+                          type: string
+                          description: Project tag value (for example, portal-kombat)
+                        environment:
+                          type: string
+                          description: Environment tag value (for example, dev, staging, prod)
+                        additional:
+                          type: object
+                          description: Additional arbitrary AWS tags to apply
+                          additionalProperties:
+                            type: string
+                      required:
+                        - managedBy
+                        - project
+                        - environment
+                    providerConfig:
+                      type: string
+                      description: Name of the Crossplane ProviderConfig to use (defaults to the platform-wide configuration)
+                      default: default
+                  required:
+                    - vpcCidr
+                    - availabilityZones
+                    - publicSubnets
+                    - privateSubnets
+                    - tags
+                writeConnectionSecretToRef:
+                  type: object
+                  description: Target Kubernetes secret for publishing VPC, subnet, and routing identifiers
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the secret to write connection details into
+                    namespace:
+                      type: string
+                      description: Namespace where the connection secret should be created
+                  required:
+                    - name
+                    - namespace
+              required:
+                - parameters
+

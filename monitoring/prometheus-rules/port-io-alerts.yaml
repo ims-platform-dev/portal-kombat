@@ -1,0 +1,140 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: port-io-sync-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: port-io-sync
+      interval: 30s
+      rules:
+        # Port.io Exporter Alerts
+        - alert: PortExporterDown
+          expr: up{job="port-exporter"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: port-exporter
+          annotations:
+            summary: "Port.io exporter is down"
+            description: "Port.io Kubernetes exporter has been down for more than 5 minutes. Infrastructure changes will not sync to Port.io catalog."
+            runbook_url: "https://github.com/your-org/portal-kombat/blob/main/docs/port-io-integration/03-troubleshooting.md#issue-1-portio-exporter-not-syncing"
+
+        - alert: PortSyncHighFailureRate
+          expr: |
+            rate(port_sync_api_requests_total{status=~"5.."}[5m]) /
+            rate(port_sync_api_requests_total[5m]) > 0.5
+          for: 10m
+          labels:
+            severity: critical
+            component: port-exporter
+          annotations:
+            summary: "High Port.io sync failure rate"
+            description: "Port.io sync failure rate is {{ $value | humanizePercentage }} over the last 10 minutes."
+
+        - alert: PortSyncHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              rate(port_sync_sync_duration_seconds_bucket[5m])
+            ) > 10
+          for: 10m
+          labels:
+            severity: warning
+            component: port-exporter
+          annotations:
+            summary: "High Port.io sync latency"
+            description: "P95 sync latency is {{ $value | humanizeDuration }} (threshold: 10s)."
+
+        - alert: PortAPIRateLimitApproaching
+          expr: port_sync_api_rate_limit_remaining < 100
+          for: 5m
+          labels:
+            severity: warning
+            component: port-exporter
+          annotations:
+            summary: "Port.io API rate limit approaching"
+            description: "Only {{ $value }} API requests remaining before rate limit. Consider reducing sync frequency."
+
+        # GitHub Actions Alerts
+        - alert: GitHubWorkflowHighFailureRate
+          expr: |
+            rate(github_workflow_run_conclusion_total{conclusion="failure",workflow="port-s3-provisioning"}[10m]) /
+            rate(github_workflow_run_conclusion_total{workflow="port-s3-provisioning"}[10m]) > 0.2
+          for: 10m
+          labels:
+            severity: warning
+            component: github-actions
+          annotations:
+            summary: "High GitHub Actions workflow failure rate"
+            description: "Port.io provisioning workflow failure rate is {{ $value | humanizePercentage }}."
+
+        - alert: GitHubRunnerQueueDepth
+          expr: github_runner_queue_depth > 10
+          for: 5m
+          labels:
+            severity: warning
+            component: github-runners
+          annotations:
+            summary: "High GitHub Actions runner queue depth"
+            description: "{{ $value }} workflows waiting in queue. Consider scaling runners."
+
+        - alert: GitHubRunnersUnavailable
+          expr: |
+            count(up{job="github-runner"} == 1) < 2
+          for: 5m
+          labels:
+            severity: critical
+            component: github-runners
+          annotations:
+            summary: "Insufficient GitHub Actions runners available"
+            description: "Only {{ $value }} runners available (minimum: 2). Infrastructure requests may be delayed."
+
+        # Crossplane Integration Alerts
+        - alert: CrossplaneProvisioningFailures
+          expr: |
+            sum(rate(crossplane_managed_resource_exists{state="failed"}[10m])) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+            component: crossplane
+          annotations:
+            summary: "High Crossplane resource provisioning failure rate"
+            description: "{{ $value | humanize }} resources failing to provision per second."
+
+        - alert: CrossplaneResourcesStuckProvisioning
+          expr: |
+            count(crossplane_managed_resource_exists{state="creating"}) > 5
+          for: 30m
+          labels:
+            severity: warning
+            component: crossplane
+          annotations:
+            summary: "Crossplane resources stuck provisioning"
+            description: "{{ $value }} resources stuck in 'creating' state for >30 minutes."
+
+        # System Health Alerts
+        - alert: PortSyncNamespaceResourcePressure
+          expr: |
+            sum(container_memory_working_set_bytes{namespace="port-sync"}) /
+            sum(container_spec_memory_limit_bytes{namespace="port-sync"}) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            component: port-sync
+          annotations:
+            summary: "Port sync namespace memory pressure"
+            description: "Port sync namespace using {{ $value | humanizePercentage }} of memory limits."
+
+        - alert: PortSyncPodRestartingFrequently
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="port-sync"}[15m]) > 0
+          for: 15m
+          labels:
+            severity: warning
+            component: port-sync
+          annotations:
+            summary: "Port sync pod restarting frequently"
+            description: "Pod {{ $labels.pod }} in port-sync namespace restarting {{ $value | humanize }} times per second."

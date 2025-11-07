@@ -1,0 +1,102 @@
+{
+  "identifier": "provision_s3_bucket",
+  "title": "Provision S3 Bucket",
+  "icon": "Bucket",
+  "description": "Request a new S3 bucket for application use. Dev environment auto-approves, staging/prod require manual approval.",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "purpose": {
+          "title": "Bucket Purpose",
+          "type": "string",
+          "description": "Business purpose (e.g., 'user-uploads', 'backup-storage', 'logs')",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 30
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string",
+          "enum": ["dev", "staging", "production"],
+          "enumColors": {
+            "dev": "blue",
+            "staging": "orange",
+            "production": "red"
+          },
+          "default": "dev",
+          "description": "Target deployment environment"
+        },
+        "team": {
+          "title": "Team Name",
+          "type": "string",
+          "description": "Your team name (for ownership and cost attribution)",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "versioning": {
+          "title": "Enable Versioning",
+          "type": "boolean",
+          "default": false,
+          "description": "Enable S3 versioning for data protection (recommended for production)"
+        },
+        "encryption": {
+          "title": "Encryption Type",
+          "type": "string",
+          "enum": ["AES256", "aws:kms"],
+          "enumColors": {
+            "AES256": "lightGray",
+            "aws:kms": "darkGray"
+          },
+          "default": "AES256",
+          "description": "Server-side encryption method. Use KMS for compliance requirements."
+        },
+        "lifecyclePolicy": {
+          "title": "Lifecycle Policy",
+          "type": "string",
+          "enum": ["none", "transition-to-glacier-30d", "expire-old-versions-90d"],
+          "default": "none",
+          "description": "Automatic lifecycle management for cost optimization"
+        },
+        "publicAccess": {
+          "title": "Public Read Access",
+          "type": "boolean",
+          "default": false,
+          "description": "⚠️ WARNING: Enable public read access (requires security approval for prod)"
+        },
+        "costCenter": {
+          "title": "Cost Center",
+          "type": "string",
+          "description": "Cost center code for billing (optional)"
+        },
+        "justification": {
+          "title": "Business Justification",
+          "type": "string",
+          "description": "Why is this bucket needed? (required for staging/prod)",
+          "format": "textarea"
+        }
+      },
+      "required": ["purpose", "environment", "team"],
+      "order": ["purpose", "environment", "team", "versioning", "encryption", "lifecyclePolicy", "publicAccess", "costCenter", "justification"]
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "your-org",
+    "repo": "portal-kombat",
+    "workflow": "port-s3-provisioning.yaml",
+    "omitPayload": false,
+    "omitUserInputs": false,
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": {
+    "dev": false,
+    "staging": true,
+    "production": true
+  },
+  "approvers": {
+    "staging": ["platform-engineering-team"],
+    "production": ["platform-engineering-leads", "security-team"]
+  },
+  "publish": true
+}

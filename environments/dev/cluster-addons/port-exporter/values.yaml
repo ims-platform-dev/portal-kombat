@@ -1,0 +1,67 @@
+# Port.io Kubernetes Exporter Configuration
+# Syncs Crossplane resources to Port.io catalog
+
+secret:
+  secrets:
+    portClientId: gWVcpoKHEkXO08XA9kkXzuIATv5POjij
+    portClientSecret: OntDC9LMg780GlKwZYZxIEknQMbZnYQ5nM7HX8wWfBG8TtvKRsy13xcZg8y8sILy
+    portBaseUrl: https://api.getport.io
+
+# Resource configuration - what to sync to Port.io
+resources:
+  # Sync Crossplane ObjectStorage XRs (S3 buckets)
+  - kind: ObjectStorage
+    selector:
+      query: .metadata.namespace | startswith("dev") or startswith("staging") or startswith("production")
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.name
+          blueprint: '"s3-bucket"'
+          properties:
+            bucketName: .spec.parameters.bucketName
+            region: .spec.parameters.region // "us-east-2"
+            environment: .metadata.namespace
+            team: .metadata.labels.team
+            purpose: .metadata.labels.purpose
+            versioning: .spec.parameters.versioning // false
+            encryption: .spec.parameters.encryption // "AES256"
+            status: .status.conditions[] | select(.type=="Ready") | .status
+            managedBy: '"Crossplane"'
+            lastSynced: now | strftime("%Y-%m-%dT%H:%M:%SZ")
+          relations:
+            cluster: '"portal-kombat-dev-eks"'
+
+  # Sync AWS S3 Buckets (Managed Resources)
+  - kind: Bucket
+    selector:
+      query: .metadata.labels."crossplane.io/claim-name" != null
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .spec.forProvider.bucket // .metadata.name
+          blueprint: '"aws-s3-bucket"'
+          properties:
+            bucketName: .spec.forProvider.bucket
+            region: .spec.forProvider.region
+            arn: .status.atProvider.arn
+            status: .status.conditions[] | select(.type=="Ready") | .status
+            claimName: .metadata.labels."crossplane.io/claim-name"
+            claimNamespace: .metadata.labels."crossplane.io/claim-namespace"
+
+# Sync interval
+scheduleInterval: 60
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Replicas
+replicaCount: 1

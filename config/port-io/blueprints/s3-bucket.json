@@ -1,0 +1,116 @@
+{
+  "identifier": "s3-bucket",
+  "title": "S3 Bucket",
+  "icon": "Bucket",
+  "schema": {
+    "properties": {
+      "bucketName": {
+        "title": "Bucket Name",
+        "type": "string",
+        "description": "AWS S3 bucket name (globally unique)"
+      },
+      "region": {
+        "title": "AWS Region",
+        "type": "string",
+        "enum": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1"],
+        "default": "us-east-2",
+        "description": "AWS region where bucket is deployed"
+      },
+      "environment": {
+        "title": "Environment",
+        "type": "string",
+        "enum": ["dev", "staging", "production"],
+        "description": "Deployment environment"
+      },
+      "versioning": {
+        "title": "Versioning Enabled",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable S3 bucket versioning"
+      },
+      "encryption": {
+        "title": "Encryption",
+        "type": "string",
+        "enum": ["AES256", "aws:kms"],
+        "default": "AES256",
+        "description": "Server-side encryption type"
+      },
+      "status": {
+        "title": "Status",
+        "type": "string",
+        "enum": ["Healthy", "Degraded", "Failed", "Provisioning", "Unknown"],
+        "description": "Resource health status from Crossplane"
+      },
+      "statusMessage": {
+        "title": "Status Message",
+        "type": "string",
+        "description": "Detailed status message from Crossplane"
+      },
+      "managedBy": {
+        "title": "Managed By",
+        "type": "string",
+        "default": "Crossplane",
+        "description": "Infrastructure management tool"
+      },
+      "team": {
+        "title": "Team",
+        "type": "string",
+        "description": "Owning team (from Kubernetes labels)"
+      },
+      "costCenter": {
+        "title": "Cost Center",
+        "type": "string",
+        "description": "Cost center for billing (from AWS tags)"
+      },
+      "createdAt": {
+        "title": "Created At",
+        "type": "string",
+        "format": "date-time",
+        "description": "Resource creation timestamp"
+      },
+      "lastSynced": {
+        "title": "Last Synced",
+        "type": "string",
+        "format": "date-time",
+        "description": "Last Port.io sync timestamp"
+      },
+      "arn": {
+        "title": "AWS ARN",
+        "type": "string",
+        "description": "Amazon Resource Name"
+      },
+      "crossplaneResourceName": {
+        "title": "Crossplane Resource Name",
+        "type": "string",
+        "description": "Kubernetes resource name"
+      },
+      "namespace": {
+        "title": "Kubernetes Namespace",
+        "type": "string",
+        "description": "Namespace where Crossplane resource resides"
+      }
+    },
+    "required": ["bucketName", "region", "environment", "status"]
+  },
+  "calculationProperties": {},
+  "relations": {
+    "cluster": {
+      "title": "EKS Cluster",
+      "target": "eks-cluster",
+      "required": false,
+      "many": false
+    },
+    "claim": {
+      "title": "ObjectStorage Claim",
+      "target": "object-storage-claim",
+      "required": false,
+      "many": false
+    },
+    "applications": {
+      "title": "Dependent Applications",
+      "target": "application",
+      "required": false,
+      "many": true
+    }
+  }
+}
