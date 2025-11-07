@@ -11,7 +11,7 @@ on:
 jobs:
   provision-s3-bucket:
     name: Provision S3 Bucket via Crossplane
-    runs-on: [self-hosted, linux, x64, portal-kombat]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
