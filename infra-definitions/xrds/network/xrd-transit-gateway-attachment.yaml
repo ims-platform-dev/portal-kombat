@@ -1,0 +1,178 @@
+---
+# XRD (CompositeResourceDefinition) for AWS Transit Gateway Attachment
+# Defines the XTransitGatewayAttachment composite and TransitGatewayAttachment claim schema
+# for attaching VPCs to Transit Gateways with selector-based resource binding
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xtransitgatewayattachments.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XTransitGatewayAttachment
+    plural: xtransitgatewayattachments
+  claimNames:
+    kind: TransitGatewayAttachment
+    plural: transitgatewayattachments
+  defaultCompositionRef:
+    name: transit-gateway-attachment-standard
+  connectionSecretKeys:
+    - attachmentId
+    - transitGatewayId
+    - vpcId
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Parameters controlling AWS Transit Gateway VPC attachment configuration
+                  properties:
+                    transitGatewayId:
+                      type: string
+                      description: Direct Transit Gateway ID (alternative to transitGatewaySelector)
+                    transitGatewaySelector:
+                      type: object
+                      description: Selector to dynamically reference a Transit Gateway by labels
+                      properties:
+                        matchLabels:
+                          type: object
+                          description: Label key-value pairs to match Transit Gateway resources
+                          additionalProperties:
+                            type: string
+                        matchControllerRef:
+                          type: boolean
+                          description: Match Transit Gateway owned by the same composite resource controller
+                          default: false
+                    vpcId:
+                      type: string
+                      description: Direct VPC ID (alternative to vpcIdSelector)
+                    vpcIdSelector:
+                      type: object
+                      description: Selector to dynamically reference a VPC by labels
+                      properties:
+                        matchLabels:
+                          type: object
+                          description: Label key-value pairs to match VPC resources
+                          additionalProperties:
+                            type: string
+                        matchControllerRef:
+                          type: boolean
+                          description: Match VPC owned by the same composite resource controller
+                          default: false
+                    subnetIds:
+                      type: array
+                      description: Direct subnet IDs for attachment (alternative to subnetSelector)
+                      items:
+                        type: string
+                      minItems: 1
+                    subnetSelector:
+                      type: object
+                      description: Selector to dynamically reference subnets by labels
+                      properties:
+                        matchLabels:
+                          type: object
+                          description: Label key-value pairs to match subnet resources
+                          additionalProperties:
+                            type: string
+                        matchControllerRef:
+                          type: boolean
+                          description: Match subnets owned by the same composite resource controller
+                          default: false
+                        tier:
+                          type: string
+                          description: Subnet tier to filter by (public or private)
+                          enum:
+                            - public
+                            - private
+                          default: private
+                    applianceModeSupport:
+                      type: boolean
+                      description: Enable appliance mode support for traffic inspection appliances
+                      default: false
+                    dnsSupport:
+                      type: boolean
+                      description: Enable DNS resolution support for resolving DNS names across VPCs
+                      default: true
+                    ipv6Support:
+                      type: boolean
+                      description: Enable IPv6 support for dual-stack configurations
+                      default: false
+                    routeTableIds:
+                      type: array
+                      description: Optional Transit Gateway route table IDs to associate with attachment
+                      items:
+                        type: string
+                    region:
+                      type: string
+                      description: AWS region for the Transit Gateway attachment
+                      default: us-east-2
+                    tags:
+                      type: object
+                      description: Tag values propagated to Transit Gateway attachment and related resources
+                      properties:
+                        managedBy:
+                          type: string
+                          description: ManagedBy tag value (e.g., Crossplane)
+                        project:
+                          type: string
+                          description: Project tag value (e.g., portal-kombat)
+                        environment:
+                          type: string
+                          description: Environment tag value (e.g., dev, staging, prod)
+                        additional:
+                          type: object
+                          description: Additional arbitrary AWS tags to apply
+                          additionalProperties:
+                            type: string
+                      required:
+                        - managedBy
+                        - project
+                        - environment
+                    providerConfig:
+                      type: string
+                      description: Name of the Crossplane ProviderConfig to use
+                      default: default
+                  required:
+                    - region
+                    - tags
+                writeConnectionSecretToRef:
+                  type: object
+                  description: Target Kubernetes secret for Transit Gateway attachment identifiers
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the secret to write connection details into
+                    namespace:
+                      type: string
+                      description: Namespace where the connection secret should be created
+                  required:
+                    - name
+                    - namespace
+              required:
+                - parameters
+            status:
+              type: object
+              description: Observed state of the Transit Gateway attachment
+              properties:
+                attachmentId:
+                  type: string
+                  description: AWS Transit Gateway attachment ID
+                state:
+                  type: string
+                  description: Attachment state (available, pending, deleting, deleted, failed)
+                resourceOwnerId:
+                  type: string
+                  description: AWS account ID that owns the VPC resource
+                associatedRouteTableIds:
+                  type: array
+                  description: Transit Gateway route table IDs associated with the attachment
+                  items:
+                    type: string

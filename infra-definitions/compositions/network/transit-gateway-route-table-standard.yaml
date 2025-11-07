@@ -1,0 +1,135 @@
+---
+# Composition: Standard AWS Transit Gateway Route Table
+# Implements the XTransitGatewayRouteTable XRD for managing Transit Gateway routing
+# with static route support
+#
+# Note: Phase 1 (Basic) - Static routes are managed as separate TransitGatewayRoute resources
+# that reference this route table. Phase 2 will add array-to-resource generation for
+# automatic static route creation from the staticRoutes array.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: transit-gateway-route-table-standard
+  labels:
+    crossplane.io/xrd: xtransitgatewayroutetables.aws.plt.intelerad.io
+    provider: aws
+    network-layer: routing
+spec:
+  compositeTypeRef:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    kind: XTransitGatewayRouteTable
+  mode: Pipeline
+  pipeline:
+    - step: transit-gateway-route-table-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+          - name: provider-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+                policy:
+                  fromFieldPath: Optional
+          - name: standard-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.managedBy
+                toFieldPath: spec.forProvider.tags.ManagedBy
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.project
+                toFieldPath: spec.forProvider.tags.Project
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.environment
+                toFieldPath: spec.forProvider.tags.Environment
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.additional
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+        resources:
+          - name: transit-gateway-route-table
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayRouteTable
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-route-table
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              # Label with claim name for reference
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+
+              # Transit Gateway ID - direct or selector-based
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewayId
+                toFieldPath: spec.forProvider.transitGatewayId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewaySelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewaySelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+
+              # Connection secret handling
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.routeTableId
+              # Note: TransitGatewayRouteTable doesn't expose a state field in AWS API
+              # TransitGatewayRouteTable is immediately available once created
+              # State is derived from resource readiness (set to "available" when ID exists)
+
+            connectionDetails:
+              - name: routeTableId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+              - name: transitGatewayId
+                type: FromFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayId

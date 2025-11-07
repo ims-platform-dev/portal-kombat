@@ -1,0 +1,217 @@
+---
+# Composition: Standard AWS Transit Gateway VPC Attachment
+# Implements the XTransitGatewayAttachment XRD for connecting VPCs to Transit Gateways
+# with selector-based resource binding and subnet filtering
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: transit-gateway-attachment-standard
+  labels:
+    crossplane.io/xrd: xtransitgatewayattachments.aws.plt.intelerad.io
+    provider: aws
+    network-layer: routing
+spec:
+  compositeTypeRef:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    kind: XTransitGatewayAttachment
+  mode: Pipeline
+  pipeline:
+    - step: transit-gateway-attachment-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+          - name: provider-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+                policy:
+                  fromFieldPath: Optional
+          - name: standard-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.managedBy
+                toFieldPath: spec.forProvider.tags.ManagedBy
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.project
+                toFieldPath: spec.forProvider.tags.Project
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.environment
+                toFieldPath: spec.forProvider.tags.Environment
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.additional
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+        resources:
+          - name: transit-gateway-attachment
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGatewayVPCAttachment
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway-attachment
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  applianceModeSupport: disable
+                  dnsSupport: enable
+                  ipv6Support: disable
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              # Label with claim name for reference
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+
+              # Transit Gateway ID - direct or selector-based
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewayId
+                toFieldPath: spec.forProvider.transitGatewayId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewaySelector.matchLabels
+                toFieldPath: spec.forProvider.transitGatewayIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.transitGatewaySelector.matchControllerRef
+                toFieldPath: spec.forProvider.transitGatewayIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+
+              # VPC ID - direct or selector-based
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcId
+                toFieldPath: spec.forProvider.vpcId
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcIdSelector.matchLabels
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpcIdSelector.matchControllerRef
+                toFieldPath: spec.forProvider.vpcIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+
+              # Subnet IDs - direct or selector-based
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.subnetIds
+                toFieldPath: spec.forProvider.subnetIds
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.subnetSelector.matchLabels
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.subnetSelector.matchControllerRef
+                toFieldPath: spec.forProvider.subnetIdSelector.matchControllerRef
+                policy:
+                  fromFieldPath: Optional
+
+              # Subnet tier filtering (public/private)
+              # When tier is specified, add it to the subnet selector matchLabels
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.subnetSelector.tier
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[portal-kombat.io/network-tier]
+                policy:
+                  fromFieldPath: Optional
+
+              # Boolean parameters with enable/disable transform
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.applianceModeSupport
+                toFieldPath: spec.forProvider.applianceModeSupport
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dnsSupport
+                toFieldPath: spec.forProvider.dnsSupport
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ipv6Support
+                toFieldPath: spec.forProvider.ipv6Support
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+
+              # Connection secret handling
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+
+              # Status field mapping
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.attachmentId
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.state
+                toFieldPath: status.state
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcOwnerId
+                toFieldPath: status.resourceOwnerId
+
+              # Note: associatedRouteTableIds is handled by route table associations
+              # which are separate resources not created in this composition
+
+            connectionDetails:
+              - name: attachmentId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+              - name: transitGatewayId
+                type: FromFieldPath
+                fromFieldPath: spec.forProvider.transitGatewayId
+              - name: vpcId
+                type: FromFieldPath
+                fromFieldPath: spec.forProvider.vpcId

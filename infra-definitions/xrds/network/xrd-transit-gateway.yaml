@@ -1,0 +1,124 @@
+---
+# XRD (CompositeResourceDefinition) for AWS Transit Gateway
+# Defines the XTransitGateway composite and TransitGateway claim schema
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xtransitgateways.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XTransitGateway
+    plural: xtransitgateways
+  claimNames:
+    kind: TransitGateway
+    plural: transitgateways
+  defaultCompositionRef:
+    name: transit-gateway-standard
+  connectionSecretKeys:
+    - transitGatewayId
+    - transitGatewayArn
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Parameters controlling AWS Transit Gateway configuration
+                  properties:
+                    amazonSideAsn:
+                      type: integer
+                      description: BGP Autonomous System Number for the Transit Gateway (private ASN range)
+                      default: 64512
+                      minimum: 64512
+                      maximum: 65534
+                    dnsSupport:
+                      type: boolean
+                      description: Enable DNS resolution support for VPC attachments
+                      default: true
+                    vpnEcmpSupport:
+                      type: boolean
+                      description: Enable Equal Cost Multipath (ECMP) routing for VPN connections
+                      default: true
+                    multicastSupport:
+                      type: boolean
+                      description: Enable multicast support for the Transit Gateway
+                      default: false
+                    defaultRouteTableAssociation:
+                      type: boolean
+                      description: Automatically associate VPC attachments with default route table
+                      default: true
+                    defaultRouteTablePropagation:
+                      type: boolean
+                      description: Automatically propagate VPC routes to default route table
+                      default: true
+                    region:
+                      type: string
+                      description: AWS region for the Transit Gateway
+                      default: us-east-2
+                    tags:
+                      type: object
+                      description: Tag values propagated to Transit Gateway and related resources
+                      properties:
+                        managedBy:
+                          type: string
+                          description: ManagedBy tag value (e.g., Crossplane)
+                        project:
+                          type: string
+                          description: Project tag value (e.g., portal-kombat)
+                        environment:
+                          type: string
+                          description: Environment tag value (e.g., dev, staging, prod)
+                        additional:
+                          type: object
+                          description: Additional arbitrary AWS tags to apply
+                          additionalProperties:
+                            type: string
+                      required:
+                        - managedBy
+                        - project
+                        - environment
+                    providerConfig:
+                      type: string
+                      description: Name of the Crossplane ProviderConfig to use
+                      default: default
+                  required:
+                    - tags
+                writeConnectionSecretToRef:
+                  type: object
+                  description: Target Kubernetes secret for Transit Gateway identifiers
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the secret to write connection details into
+                    namespace:
+                      type: string
+                      description: Namespace where the connection secret should be created
+                  required:
+                    - name
+                    - namespace
+              required:
+                - parameters
+            status:
+              type: object
+              description: Observed state of the Transit Gateway
+              properties:
+                transitGatewayId:
+                  type: string
+                  description: AWS Transit Gateway ID
+                transitGatewayArn:
+                  type: string
+                  description: AWS Transit Gateway ARN
+                state:
+                  type: string
+                  description: Transit Gateway state (available, pending, deleting, deleted)
+                ownerAccountId:
+                  type: string
+                  description: AWS account ID that owns the Transit Gateway

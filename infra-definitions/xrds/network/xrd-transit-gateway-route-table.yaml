@@ -1,0 +1,191 @@
+---
+# XRD (CompositeResourceDefinition) for AWS Transit Gateway Route Table
+# Defines the XTransitGatewayRouteTable composite and TransitGatewayRouteTable claim schema
+# for managing route tables with static routes and route propagation
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xtransitgatewayroutetables.aws.plt.intelerad.io
+spec:
+  group: aws.plt.intelerad.io
+  names:
+    kind: XTransitGatewayRouteTable
+    plural: xtransitgatewayroutetables
+  claimNames:
+    kind: TransitGatewayRouteTable
+    plural: transitgatewayroutetables
+  defaultCompositionRef:
+    name: transit-gateway-route-table-standard
+  connectionSecretKeys:
+    - routeTableId
+    - transitGatewayId
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Parameters controlling AWS Transit Gateway route table configuration
+                  properties:
+                    transitGatewayId:
+                      type: string
+                      description: Direct Transit Gateway ID (alternative to transitGatewaySelector)
+                    transitGatewaySelector:
+                      type: object
+                      description: Selector to dynamically reference a Transit Gateway by labels
+                      properties:
+                        matchLabels:
+                          type: object
+                          description: Label key-value pairs to match Transit Gateway resources
+                          additionalProperties:
+                            type: string
+                        matchControllerRef:
+                          type: boolean
+                          description: Match Transit Gateway owned by the same composite resource controller
+                          default: false
+                    routePropagations:
+                      type: array
+                      description: List of attachments to propagate routes from (automatic route advertisement)
+                      items:
+                        type: object
+                        properties:
+                          attachmentId:
+                            type: string
+                            description: Direct attachment ID (alternative to attachmentSelector)
+                          attachmentSelector:
+                            type: object
+                            description: Selector to dynamically reference an attachment by labels
+                            properties:
+                              matchLabels:
+                                type: object
+                                description: Label key-value pairs to match attachment resources
+                                additionalProperties:
+                                  type: string
+                              matchControllerRef:
+                                type: boolean
+                                description: Match attachment owned by the same composite resource controller
+                                default: false
+                    staticRoutes:
+                      type: array
+                      description: List of static routes to configure in the route table
+                      items:
+                        type: object
+                        properties:
+                          destinationCidr:
+                            type: string
+                            description: Destination CIDR block for the route
+                            pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}$'
+                          attachmentId:
+                            type: string
+                            description: Direct attachment ID for the route target (alternative to attachmentSelector)
+                          attachmentSelector:
+                            type: object
+                            description: Selector to dynamically reference an attachment by labels for the route target
+                            properties:
+                              matchLabels:
+                                type: object
+                                description: Label key-value pairs to match attachment resources
+                                additionalProperties:
+                                  type: string
+                              matchControllerRef:
+                                type: boolean
+                                description: Match attachment owned by the same composite resource controller
+                                default: false
+                          blackhole:
+                            type: boolean
+                            description: Drop traffic matching this route (blackhole route)
+                            default: false
+                        required:
+                          - destinationCidr
+                    region:
+                      type: string
+                      description: AWS region for the Transit Gateway route table
+                      default: us-east-2
+                    tags:
+                      type: object
+                      description: Tag values propagated to Transit Gateway route table and related resources
+                      properties:
+                        managedBy:
+                          type: string
+                          description: ManagedBy tag value (e.g., Crossplane)
+                        project:
+                          type: string
+                          description: Project tag value (e.g., portal-kombat)
+                        environment:
+                          type: string
+                          description: Environment tag value (e.g., dev, staging, prod)
+                        additional:
+                          type: object
+                          description: Additional arbitrary AWS tags to apply
+                          additionalProperties:
+                            type: string
+                      required:
+                        - managedBy
+                        - project
+                        - environment
+                    providerConfig:
+                      type: string
+                      description: Name of the Crossplane ProviderConfig to use
+                      default: default
+                  required:
+                    - region
+                    - tags
+                writeConnectionSecretToRef:
+                  type: object
+                  description: Target Kubernetes secret for Transit Gateway route table identifiers
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the secret to write connection details into
+                    namespace:
+                      type: string
+                      description: Namespace where the connection secret should be created
+                  required:
+                    - name
+                    - namespace
+              required:
+                - parameters
+            status:
+              type: object
+              description: Observed state of the Transit Gateway route table
+              properties:
+                routeTableId:
+                  type: string
+                  description: AWS Transit Gateway route table ID
+                state:
+                  type: string
+                  description: Route table state (available, pending, deleting, deleted)
+                propagatedAttachments:
+                  type: array
+                  description: List of attachments with route propagation enabled
+                  items:
+                    type: object
+                    properties:
+                      attachmentId:
+                        type: string
+                        description: Transit Gateway attachment ID
+                      state:
+                        type: string
+                        description: Propagation state (enabled, enabling, disabled, disabling)
+                staticRoutes:
+                  type: array
+                  description: List of configured static routes and their states
+                  items:
+                    type: object
+                    properties:
+                      destinationCidr:
+                        type: string
+                        description: Destination CIDR block for the route
+                      attachmentId:
+                        type: string
+                        description: Target attachment ID (null for blackhole routes)
+                      state:
+                        type: string
+                        description: Route state (active, blackhole, pending, deleted)

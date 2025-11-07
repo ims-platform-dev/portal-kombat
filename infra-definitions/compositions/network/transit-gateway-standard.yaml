@@ -1,0 +1,174 @@
+---
+# Composition: Standard AWS Transit Gateway
+# Implements the XTransitGateway XRD for hub-and-spoke network connectivity
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: transit-gateway-standard
+  labels:
+    crossplane.io/xrd: xtransitgateways.aws.plt.intelerad.io
+    provider: aws
+    network-layer: routing
+spec:
+  compositeTypeRef:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    kind: XTransitGateway
+  mode: Pipeline
+  pipeline:
+    - step: transit-gateway-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+          - name: provider-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Optional
+          - name: region
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+                policy:
+                  fromFieldPath: Optional
+          - name: standard-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.managedBy
+                toFieldPath: spec.forProvider.tags.ManagedBy
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.project
+                toFieldPath: spec.forProvider.tags.Project
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.environment
+                toFieldPath: spec.forProvider.tags.Environment
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags.additional
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  fromFieldPath: Optional
+                  toFieldPath: MergeObjects
+        resources:
+          - name: transit-gateway
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: TransitGateway
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: transit-gateway
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  amazonSideAsn: 64512
+                  dnsSupport: enable
+                  vpnEcmpSupport: enable
+                  multicastSupport: disable
+                  defaultRouteTableAssociation: enable
+                  defaultRouteTablePropagation: enable
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.amazonSideAsn
+                toFieldPath: spec.forProvider.amazonSideAsn
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dnsSupport
+                toFieldPath: spec.forProvider.dnsSupport
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.vpnEcmpSupport
+                toFieldPath: spec.forProvider.vpnEcmpSupport
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.multicastSupport
+                toFieldPath: spec.forProvider.multicastSupport
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.defaultRouteTableAssociation
+                toFieldPath: spec.forProvider.defaultRouteTableAssociation
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.defaultRouteTablePropagation
+                toFieldPath: spec.forProvider.defaultRouteTablePropagation
+                policy:
+                  fromFieldPath: Optional
+                transforms:
+                  - type: map
+                    map:
+                      true: enable
+                      false: disable
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.writeConnectionSecretToRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.transitGatewayId
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.transitGatewayArn
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.state
+                toFieldPath: status.state
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.ownerId
+                toFieldPath: status.ownerAccountId
+            connectionDetails:
+              - name: transitGatewayId
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.id
+              - name: transitGatewayArn
+                type: FromFieldPath
+                fromFieldPath: status.atProvider.arn
