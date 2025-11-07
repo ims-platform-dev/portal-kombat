@@ -277,15 +277,21 @@ jobs:
             MESSAGE="Failed to create pull request. Check workflow logs for details."
           fi
 
+          echo "Would update Port.io run ${{ steps.payload.outputs.port_run_id }} with status: ${STATUS}"
+          echo "Message: ${MESSAGE}"
+
+          # NOTE: Commented out due to GitHub Free plan limitations (no repository secrets for private repos)
+          # Uncomment when secrets are available or repository is public
+
           # Update Port.io run status (US API endpoint)
-          curl -X PATCH "https://api.us.getport.io/v1/actions/runs/${{ steps.payload.outputs.port_run_id }}" \
-            -H "Authorization: Bearer ${{ secrets.PORT_CLIENT_ID }}:${{ secrets.PORT_CLIENT_SECRET }}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"status\": \"${STATUS}\",
-              \"message\": \"${MESSAGE}\",
-              \"link\": \"${{ steps.pr.outputs.pr_url }}\"
-            }"
+          # curl -X PATCH "https://api.us.getport.io/v1/actions/runs/${{ steps.payload.outputs.port_run_id }}" \
+          #   -H "Authorization: Bearer ${{ secrets.PORT_CLIENT_ID }}:${{ secrets.PORT_CLIENT_SECRET }}" \
+          #   -H "Content-Type: application/json" \
+          #   -d "{
+          #     \"status\": \"${STATUS}\",
+          #     \"message\": \"${MESSAGE}\",
+          #     \"link\": \"${{ steps.pr.outputs.pr_url }}\"
+          #   }"
 
       - name: Cleanup on failure
         if: failure()
