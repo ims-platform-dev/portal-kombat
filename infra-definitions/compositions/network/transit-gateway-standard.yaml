@@ -99,50 +99,65 @@ spec:
                 policy:
                   fromFieldPath: Optional
                 transforms:
+                  - type: convert
+                    convert:
+                      toType: string
                   - type: map
                     map:
-                      true: enable
-                      false: disable
+                      "true": "enable"
+                      "false": "disable"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.vpnEcmpSupport
                 toFieldPath: spec.forProvider.vpnEcmpSupport
                 policy:
                   fromFieldPath: Optional
                 transforms:
+                  - type: convert
+                    convert:
+                      toType: string
                   - type: map
                     map:
-                      true: enable
-                      false: disable
+                      "true": "enable"
+                      "false": "disable"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.multicastSupport
                 toFieldPath: spec.forProvider.multicastSupport
                 policy:
                   fromFieldPath: Optional
                 transforms:
+                  - type: convert
+                    convert:
+                      toType: string
                   - type: map
                     map:
-                      true: enable
-                      false: disable
+                      "true": "enable"
+                      "false": "disable"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.defaultRouteTableAssociation
                 toFieldPath: spec.forProvider.defaultRouteTableAssociation
                 policy:
                   fromFieldPath: Optional
                 transforms:
+                  - type: convert
+                    convert:
+                      toType: string
                   - type: map
                     map:
-                      true: enable
-                      false: disable
+                      "true": "enable"
+                      "false": "disable"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.defaultRouteTablePropagation
                 toFieldPath: spec.forProvider.defaultRouteTablePropagation
                 policy:
                   fromFieldPath: Optional
                 transforms:
+                  - type: convert
+                    convert:
+                      toType: string
                   - type: map
                     map:
-                      true: enable
-                      false: disable
+                      "true": "enable"
+                      "false": "disable"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.writeConnectionSecretToRef.name
                 toFieldPath: spec.writeConnectionSecretToRef.name
