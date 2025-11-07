@@ -205,6 +205,10 @@ spec:
                     ManagedBy: Crossplane
                     Project: portal-kombat
                     Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
                 deletionPolicy: Delete
             patches:
               - type: FromCompositeFieldPath
@@ -227,36 +231,6 @@ spec:
               - name: internetGatewayId
                 type: FromFieldPath
                 fromFieldPath: status.atProvider.id
-          - name: internet-gateway-attachment
-            patches:
-              - type: PatchSet
-                patchSetName: provider-config
-              - type: PatchSet
-                patchSetName: region
-            base:
-              apiVersion: ec2.aws.upbound.io/v1beta1
-              kind: InternetGatewayAttachment
-              metadata:
-                labels:
-                  portal-kombat.io/network-component: internet-gateway-attachment
-              spec:
-                providerConfigRef:
-                  name: default
-                forProvider:
-                  region: us-east-2
-                  internetGatewayIdSelector:
-                    matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-component: internet-gateway
-                  vpcIdSelector:
-                    matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-component: vpc
-                deletionPolicy: Delete
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.labels[portal-kombat.io/network-claim]
           - name: public-subnet-0
             patches:
               - type: PatchSet
