@@ -56,10 +56,13 @@ spec:
                   toFieldPath: MergeObjects
         resources:
           - name: vpc
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: VPC
@@ -190,10 +193,13 @@ spec:
                 type: FromFieldPath
                 fromFieldPath: metadata.annotations[portal-kombat.io/private-route-table-ids]
           - name: internet-gateway
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: InternetGateway
@@ -234,9 +240,11 @@ spec:
                 type: FromFieldPath
                 fromFieldPath: status.atProvider.id
           - name: internet-gateway-attachment
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: InternetGatewayAttachment
@@ -262,10 +270,13 @@ spec:
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
           - name: public-subnet-0
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -328,10 +339,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-subnet-1
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -394,10 +408,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-subnet-2
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -460,10 +477,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: private-subnet-0
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -526,10 +546,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: private-subnet-1
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -592,10 +615,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: private-subnet-2
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -658,10 +684,13 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-route-table-0
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -713,9 +742,11 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-route-default-0
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -753,9 +784,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-0
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
@@ -797,10 +830,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-1
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -852,9 +888,11 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-route-default-1
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -892,9 +930,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-1
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
@@ -936,10 +976,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-2
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -991,9 +1034,11 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: public-route-default-2
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -1031,9 +1076,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: public-route-table-association-2
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
@@ -1075,10 +1122,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: nat-elastic-ip
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: EIP
@@ -1116,10 +1166,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: nat-gateway
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: NATGateway
@@ -1189,9 +1242,11 @@ spec:
                 type: FromFieldPath
                 fromFieldPath: status.atProvider.id
           - name: private-route-default-0
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -1234,9 +1289,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-default-1
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -1279,9 +1336,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-default-2
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Route
@@ -1324,10 +1383,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-0
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -1374,9 +1436,11 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-association-0
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
@@ -1418,10 +1482,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-1
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -1473,9 +1540,11 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: private-route-table-association-1
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
@@ -1517,10 +1586,13 @@ spec:
                 policy:
                   fromFieldPath: Required
           - name: private-route-table-2
-            patchSets:
-              - provider-config
-              - region
-              - standard-tags
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -1572,9 +1644,11 @@ spec:
                 policy:
                   toFieldPath: Optional
           - name: private-route-table-association-2
-            patchSets:
-              - provider-config
-              - region
+            patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTableAssociation
