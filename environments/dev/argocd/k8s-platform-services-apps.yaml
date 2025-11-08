@@ -11,7 +11,7 @@ metadata:
   name: dev-k8s-cert-manager
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "10" 
+    argocd.argoproj.io/sync-wave: "10"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -36,59 +36,6 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: dev-k8s-monitoring
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "40"  # After ingress controller
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  sources:
-    # Helm chart from prometheus-community
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: 79.4.0
-      helm:
-        releaseName: kube-prometheus-stack
-        valueFiles:
-          - $values/environments/dev/cluster-addons/monitoring/values.yaml
-    # Values file from Git repo
-    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
-      targetRevision: main
-      ref: values
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: kube-prometheus-stack
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-      allowEmpty: false
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-      - RespectIgnoreDifferences=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/replicas
-    - group: apps
-      kind: StatefulSet
-      jsonPointers:
-        - /spec/replicas
 
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -127,59 +74,6 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: dev-k8s-monitoring
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "40"  # After ingress controller
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  sources:
-    # Helm chart from prometheus-community
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: 79.4.0
-      helm:
-        releaseName: kube-prometheus-stack
-        valueFiles:
-          - $values/environments/dev/cluster-addons/monitoring/values.yaml
-    # Values file from Git repo
-    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
-      targetRevision: main
-      ref: values
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: kube-prometheus-stack
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-      allowEmpty: false
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-      - RespectIgnoreDifferences=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/replicas
-    - group: apps
-      kind: StatefulSet
-      jsonPointers:
-        - /spec/replicas
 
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -231,19 +125,108 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  sources:
-    # Helm chart from prometheus-community
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: 79.4.0
-      helm:
-        releaseName: kube-prometheus-stack
-        valueFiles:
-          - $values/environments/dev/cluster-addons/monitoring/values.yaml
-    # Values file from Git repo
-    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 79.4.0
+    helm:
+      releaseName: kube-prometheus-stack
+      parameters:
+        - name: grafana.service.type
+          value: ClusterIP
+        - name: prometheus.service.type
+          value: ClusterIP
+        - name: alertmanager.service.type
+          value: ClusterIP
+      values: |
+        grafana:
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 100m
+              memory: 1Gi
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+              - name: default
+                orgId: 1
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+          dashboards:
+            default:
+              argocd:
+                gnetId: 14584
+                revision: 1
+                datasource: prometheusdatasource
+              crossplane:
+                gnetId: 21169
+                revision: 1
+                datasource: prometheusdatasource
+              eks:
+                gnetId: 14623
+                revision: 1
+                datasource: prometheusdatasource
+              ekscontrolplane:
+                gnetId: 21192
+                revision: 1
+                datasource: prometheusdatasource
+          datasources:
+            datasources.yaml:
+              apiVersion: 1
+              datasources:
+              - name: Prometheus
+                type: prometheus
+                uid: prometheusdatasource
+                access: proxy
+                url: http://kube-prometheus-stack-prometheus.kube-prometheus-stack:9090/
+                isDefault: true
+              deleteDatasources:
+              - name: Prometheus
+                orgId: 1
+        prometheus:
+          prometheusSpec:
+            retention: 30d
+            retentionSize: 15GB
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 50Gi
+          additionalServiceMonitors:
+          - name: argocd
+            namespaceSelector:
+              matchNames:
+              - argocd
+            selector:
+              matchLabels:
+                prometheus.io/scrape: "true"
+            endpoints:
+            - port: metrics
+          additionalPodMonitors:
+          - name: crossplane
+            namespaceSelector:
+              matchNames:
+              - crossplane-system
+            selector: {}
+            podMetricsEndpoints:
+            - port: metrics
+        alertmanager:
+          alertmanagerSpec:
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-prometheus-stack
@@ -271,4 +254,3 @@ spec:
       kind: StatefulSet
       jsonPointers:
         - /spec/replicas
-
