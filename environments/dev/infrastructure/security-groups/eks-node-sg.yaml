@@ -3,66 +3,66 @@
 #
 # EKS worker node security group - complex networking with self-references, control plane access, NodePort services
 # Use case: EKS managed node groups, self-managed worker nodes
-apiVersion: network.platform.example/v1alpha1
-kind: SecurityGroup
-metadata:
-  name: eks-node
-  namespace: default
-spec:
-  parameters:
-    environment: dev
-    purpose: eks-node
-    region: us-east-2
-    vpcIdRef:
-      name: dev-shared-vpc
-    providerConfig: dev-account
+# apiVersion: network.platform.example/v1alpha1
+# kind: SecurityGroup
+# metadata:
+#   name: eks-node
+#   namespace: default
+# spec:
+#   parameters:
+#     environment: dev
+#     purpose: eks-node
+#     region: us-east-2
+#     vpcIdRef:
+#       name: dev-shared-vpc
+#     providerConfig: dev-account
 
-    ingressRules:
-      # Node-to-node communication (self-reference)
-      - protocol: "-1"
-        fromPort: 0
-        toPort: 0
-        sourceSecurityGroupIdSelector:
-          matchControllerRef: true
-        description: "Allow ALL from self (node-to-node)"
+#     ingressRules:
+#       # Node-to-node communication (self-reference)
+#       - protocol: "-1"
+#         fromPort: 0
+#         toPort: 0
+#         sourceSecurityGroupIdSelector:
+#           matchControllerRef: true
+#         description: "Allow ALL from self (node-to-node)"
 
-      # Control plane to nodes
-      - protocol: tcp
-        fromPort: 443
-        toPort: 443
-        sourceSecurityGroupIdSelector:
-          matchLabels:
-            portal-kombat.io/security-group: eks-control-plane
-        description: "Allow HTTPS/443 from eks-control-plane-sg"
+#       # Control plane to nodes
+#       - protocol: tcp
+#         fromPort: 443
+#         toPort: 443
+#         sourceSecurityGroupIdSelector:
+#           matchLabels:
+#             portal-kombat.io/security-group: eks-control-plane
+#         description: "Allow HTTPS/443 from eks-control-plane-sg"
 
-      # Kubelet API
-      - protocol: tcp
-        fromPort: 10250
-        toPort: 10250
-        sourceSecurityGroupIdSelector:
-          matchLabels:
-            portal-kombat.io/security-group: eks-control-plane
-        description: "Allow Kubelet/10250 from eks-control-plane-sg"
+#       # Kubelet API
+#       - protocol: tcp
+#         fromPort: 10250
+#         toPort: 10250
+#         sourceSecurityGroupIdSelector:
+#           matchLabels:
+#             portal-kombat.io/security-group: eks-control-plane
+#         description: "Allow Kubelet/10250 from eks-control-plane-sg"
 
-      # NodePort services
-      - protocol: tcp
-        fromPort: 30000
-        toPort: 32767
-        cidrBlocks:
-          - 10.0.0.0/8
-        description: "Allow NodePort/30000-32767 from VPC"
+#       # NodePort services
+#       - protocol: tcp
+#         fromPort: 30000
+#         toPort: 32767
+#         cidrBlocks:
+#           - 10.0.0.0/8
+#         description: "Allow NodePort/30000-32767 from VPC"
 
-    egressRules:
-      # Allow all outbound
-      - protocol: "-1"
-        fromPort: 0
-        toPort: 0
-        cidrBlocks:
-          - 0.0.0.0/0
-        description: "Allow ALL outbound"
+#     egressRules:
+#       # Allow all outbound
+#       - protocol: "-1"
+#         fromPort: 0
+#         toPort: 0
+#         cidrBlocks:
+#           - 0.0.0.0/0
+#         description: "Allow ALL outbound"
 
-    tags:
-      managedBy: Crossplane
-      project: portal-kombat
-      environment: dev
-      purpose: eks-node
+#     tags:
+#       managedBy: Crossplane
+#       project: portal-kombat
+#       environment: dev
+#       purpose: eks-node

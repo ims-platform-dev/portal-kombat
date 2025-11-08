@@ -1,64 +1,58 @@
-apiVersion: aws.plt.intelerad.io/v1alpha1
-kind: VPCNetwork
-metadata:
-  name: platform-prod-shared-vpc
-  namespace: default
-spec:
-  parameters:
-    # VPC Configuration
-    vpcCidr: 10.100.0.0/16
-    region: us-east-2
-    availabilityZones:
-      - us-east-2a
-      - us-east-2b
-      - us-east-2c
+# apiVersion: aws.plt.intelerad.io/v1alpha1
+# kind: VPCNetwork
+# metadata:
+#   name: platform-prod-shared-vpc
+#   namespace: default
+# spec:
+#   parameters:
+#     vpcCidr: 10.100.0.0/16
+#     region: us-east-2
+#     availabilityZones:
+#       - us-east-2a
+#       - us-east-2b
+#       - us-east-2c
 
-    # Public Subnets (for ALB, NAT Gateway, etc.)
-    publicSubnets:
-      - name: prod-shared-public-a
-        cidr: 10.100.0.0/20      # 10.100.0.0 - 10.100.15.255
-        az: us-east-2a
-        mapPublicIpOnLaunch: true
-      - name: prod-shared-public-b
-        cidr: 10.100.16.0/20     # 10.100.16.0 - 10.100.31.255
-        az: us-east-2b
-        mapPublicIpOnLaunch: true
-      - name: prod-shared-public-c
-        cidr: 10.100.32.0/20     # 10.100.32.0 - 10.100.47.255
-        az: us-east-2c
-        mapPublicIpOnLaunch: true
 
-    # Private Subnets (for EKS nodes, RDS, etc.)
-    privateSubnets:
-      - name: prod-shared-private-a
-        cidr: 10.100.48.0/20     # 10.100.48.0 - 10.100.63.255
-        az: us-east-2a
-      - name: prod-shared-private-b
-        cidr: 10.100.64.0/20     # 10.100.64.0 - 10.100.79.255
-        az: us-east-2b
-      - name: prod-shared-private-c
-        cidr: 10.100.80.0/20     # 10.100.80.0 - 10.100.95.255
-        az: us-east-2c
+#     publicSubnets:
+#       - name: prod-shared-public-a
+#         cidr: 10.100.0.0/20    
+#         az: us-east-2a
+#         mapPublicIpOnLaunch: true
+#       - name: prod-shared-public-b
+#         cidr: 10.100.16.0/20     
+#         az: us-east-2b
+#         mapPublicIpOnLaunch: true
+#       - name: prod-shared-public-c
+#         cidr: 10.100.32.0/20    
+#         az: us-east-2c
+#         mapPublicIpOnLaunch: true
 
-    # NAT Gateway Configuration
-    # ⚠️ NAT Gateway costs ~$0.045/hour + data transfer charges
-    natGateway:
-      enabled: true
-      publicSubnetName: prod-shared-public-a
-      allocateElasticIp: true
 
-    # Tags for resource organization
-    tags:
-      managedBy: Crossplane
-      project: portal-kombat
-      environment: production
-      additional:
-        CostCenter: platform-networking
-        Compliance: "true"
+#     privateSubnets:
+#       - name: prod-shared-private-a
+#         cidr: 10.100.48.0/20   
+#         az: us-east-2a
+#       - name: prod-shared-private-b
+#         cidr: 10.100.64.0/20     
+#         az: us-east-2b
+#       - name: prod-shared-private-c
+#         cidr: 10.100.80.0/20   
+#         az: us-east-2c
 
-    # ⚠️ CRITICAL: Use platform-prod-account provider config for role chaining
-    providerConfig: platform-prod-account
 
-  # Connection secret stores VPC ID and subnet IDs for use by other resources
-  writeConnectionSecretToRef:
-    name: platform-prod-vpc-connection
+#     natGateway:
+#       enabled: true
+#       publicSubnetName: prod-shared-public-a
+#       allocateElasticIp: true
+
+
+#     tags:
+#       managedBy: Crossplane
+#       project: portal-kombat
+#       environment: production
+#       additional:
+#         CostCenter: platform-networking
+#         Compliance: "true"
+#     providerConfig: platform-prod-account
+#   writeConnectionSecretToRef:
+#     name: platform-prod-vpc-connection
