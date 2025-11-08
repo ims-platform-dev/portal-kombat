@@ -211,6 +211,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 1
           - name: ingress-rule-1
@@ -260,6 +262,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 2
           - name: ingress-rule-2
@@ -309,6 +313,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 3
           - name: ingress-rule-3
@@ -358,6 +364,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 4
           - name: ingress-rule-4
@@ -407,6 +415,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
 
           # Ingress Rule 5
