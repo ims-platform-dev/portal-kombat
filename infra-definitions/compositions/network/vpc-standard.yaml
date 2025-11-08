@@ -566,9 +566,6 @@ spec:
                 toFieldPath: spec.forProvider.tags.Name
                 policy:
                   fromFieldPath: Required
-              - type: ToCompositeFieldPath
-                fromFieldPath: status.atProvider.id
-                toFieldPath: status.publicRouteTables[0].id
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -704,9 +701,6 @@ spec:
                 toFieldPath: spec.forProvider.tags.Name
                 policy:
                   fromFieldPath: Required
-              - type: ToCompositeFieldPath
-                fromFieldPath: status.atProvider.id
-                toFieldPath: status.publicRouteTables[1].id
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -842,9 +836,6 @@ spec:
                 toFieldPath: spec.forProvider.tags.Name
                 policy:
                   fromFieldPath: Required
-              - type: ToCompositeFieldPath
-                fromFieldPath: status.atProvider.id
-                toFieldPath: status.publicRouteTables[2].id
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -1324,9 +1315,6 @@ spec:
                 toFieldPath: spec.forProvider.tags.Name
                 policy:
                   fromFieldPath: Required
-              - type: ToCompositeFieldPath
-                fromFieldPath: status.atProvider.id
-                toFieldPath: status.privateRouteTables[1].id
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable
@@ -1422,9 +1410,6 @@ spec:
                 toFieldPath: spec.forProvider.tags.Name
                 policy:
                   fromFieldPath: Required
-              - type: ToCompositeFieldPath
-                fromFieldPath: status.atProvider.id
-                toFieldPath: status.privateRouteTables[2].id
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: RouteTable

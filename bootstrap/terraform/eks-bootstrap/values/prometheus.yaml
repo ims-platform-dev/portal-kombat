@@ -4,6 +4,18 @@ prometheus:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - pk-prometheus.plt-dev.inteleradhealth.com
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - pk-prometheus.plt-dev.inteleradhealth.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      external-dns.alpha.kubernetes.io/hostname: pk-prometheus.plt-dev.inteleradhealth.com
   additionalPodMonitors:
     - name: "crossplane"
       namespaceSelector:
@@ -28,6 +40,18 @@ grafana:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - pk-grafana.plt-dev.inteleradhealth.com
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - pk-grafana.plt-dev.inteleradhealth.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      external-dns.alpha.kubernetes.io/hostname: pk-grafana.plt-dev.inteleradhealth.com
   resources:
     requests:
       cpu: "100m"

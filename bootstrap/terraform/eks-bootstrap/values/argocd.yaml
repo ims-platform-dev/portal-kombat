@@ -61,6 +61,18 @@ server:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - pk-argocd.plt-dev.inteleradhealth.com
+    tls:
+      - secretName: argocd-tls
+        hosts:
+          - pk-argocd.plt-dev.inteleradhealth.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      external-dns.alpha.kubernetes.io/hostname: pk-argocd.plt-dev.inteleradhealth.com
 
 configs:
   params:

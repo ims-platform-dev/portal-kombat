@@ -225,24 +225,6 @@ spec:
                       id:
                         type: string
                         description: AWS Subnet ID
-                publicRouteTables:
-                  type: array
-                  description: Details of public route tables
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: AWS Route Table ID
-                privateRouteTables:
-                  type: array
-                  description: Details of private route tables
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: AWS Route Table ID
                 publicSubnetIdsCsv:
                   type: string
                   description: Comma-separated list of public subnet IDs
