@@ -57,9 +57,13 @@ spec:
         resources:
           - name: vpc
             patches:
-              # PatchSets first (these propagate provider-config, region, and tags)
-              - type: PatchSet
-                patchSetName: provider-config
+              # Direct provider-config patch (bypass patchset to test if that's the issue)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.providerConfig
+                toFieldPath: spec.providerConfigRef.name
+                policy:
+                  fromFieldPath: Required
+              # PatchSets for region and tags
               - type: PatchSet
                 patchSetName: region
               - type: PatchSet
@@ -201,8 +205,7 @@ spec:
                 labels:
                   portal-kombat.io/network-component: internet-gateway
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -270,8 +273,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: true
@@ -336,8 +338,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: true
@@ -402,8 +403,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: true
@@ -468,8 +468,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: false
@@ -534,8 +533,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: false
@@ -600,8 +598,7 @@ spec:
                   portal-kombat.io/network-component: subnet
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   mapPublicIpOnLaunch: false
@@ -656,8 +653,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -696,8 +692,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -742,8 +737,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -797,8 +791,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -837,8 +830,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -883,8 +875,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -938,8 +929,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -978,8 +968,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -1024,8 +1013,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: public
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -1070,8 +1058,7 @@ spec:
                 labels:
                   portal-kombat.io/network-component: nat-elastic-ip
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   domain: vpc
@@ -1131,8 +1118,7 @@ spec:
                 labels:
                   portal-kombat.io/network-component: nat-gateway
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   connectivityType: public
@@ -1185,8 +1171,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -1231,8 +1216,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -1277,8 +1261,7 @@ spec:
                   portal-kombat.io/network-component: route
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: 0.0.0.0/0
@@ -1330,8 +1313,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -1375,8 +1357,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -1430,8 +1411,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -1475,8 +1455,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -1530,8 +1509,7 @@ spec:
                   portal-kombat.io/network-component: route-table
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   tags:
@@ -1575,8 +1553,7 @@ spec:
                   portal-kombat.io/network-component: route-table-association
                   portal-kombat.io/network-tier: private
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   routeTableIdSelector:
@@ -1642,8 +1619,7 @@ spec:
                   portal-kombat.io/network-tier: private
                   portal-kombat.io/route-type: transit-gateway
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
@@ -1702,8 +1678,7 @@ spec:
                   portal-kombat.io/network-tier: private
                   portal-kombat.io/route-type: transit-gateway
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
@@ -1761,8 +1736,7 @@ spec:
                   portal-kombat.io/network-tier: private
                   portal-kombat.io/route-type: transit-gateway
               spec:
-                providerConfigRef:
-                  name: default
+                # providerConfigRef will be populated by patches from composite
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
