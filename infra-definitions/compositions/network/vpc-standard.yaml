@@ -1001,6 +1001,9 @@ spec:
                     Project: portal-kombat
                     Environment: dev
                 deletionPolicy: Delete
+            readinessChecks:
+              - type: MatchTrue
+                fieldPath: status.atProvider.id
           - name: nat-gateway
             patches:
               - type: PatchSet
@@ -1069,6 +1072,9 @@ spec:
                     matchLabels:
                       portal-kombat.io/network-component: nat-elastic-ip
                 deletionPolicy: Delete
+            readinessChecks:
+              - type: MatchTrue
+                fieldPath: status.atProvider.id
             connectionDetails:
               - name: natGatewayId
                 type: FromFieldPath
