@@ -57,7 +57,7 @@ spec:
         resources:
           - name: vpc
             patches:
-              # Direct provider-config patch (bypass patchset to test if that's the issue)
+              # Direct provider-config patch to enable cross-account assume-role
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.providerConfig
                 toFieldPath: spec.providerConfigRef.name
@@ -68,7 +68,7 @@ spec:
                 patchSetName: region
               - type: PatchSet
                 patchSetName: standard-tags
-              # Then individual FromCompositeFieldPath patches
+              # Individual FromCompositeFieldPath patches
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
@@ -94,6 +94,25 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.vpcId
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: VPC
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: vpc
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  cidrBlock: 10.0.0.0/16
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                deletionPolicy: Delete
             connectionDetails:
               - name: vpcId
                 type: FromFieldPath
