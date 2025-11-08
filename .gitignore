@@ -35,7 +35,7 @@ terraform.rc
 *.swo
 *~
 .DS_Store
-
+.serena
 # Terraform lock files (optional - commit these to ensure consistent versions)
 # .terraform.lock.hcl
 

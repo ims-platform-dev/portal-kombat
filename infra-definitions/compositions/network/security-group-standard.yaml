@@ -620,6 +620,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 9
           - name: ingress-rule-9
@@ -669,6 +671,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 10
           - name: ingress-rule-10
@@ -718,6 +722,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 11
           - name: ingress-rule-11
@@ -767,6 +773,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 12
           - name: ingress-rule-12
@@ -816,6 +824,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 13
           - name: ingress-rule-13
@@ -865,6 +875,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 14
           - name: ingress-rule-14
@@ -914,6 +926,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 15
           - name: ingress-rule-15
@@ -963,6 +977,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 16
           - name: ingress-rule-16
@@ -1012,6 +1028,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 17
           - name: ingress-rule-17
@@ -1061,6 +1079,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 18
           - name: ingress-rule-18
@@ -1110,6 +1130,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 19
           - name: ingress-rule-19
@@ -1159,6 +1181,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 0
           - name: egress-rule-0
