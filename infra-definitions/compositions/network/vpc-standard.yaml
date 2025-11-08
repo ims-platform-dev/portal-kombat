@@ -446,29 +446,6 @@ spec:
                 patchSetName: region
               - type: PatchSet
                 patchSetName: standard-tags
-            base:
-              apiVersion: ec2.aws.upbound.io/v1beta1
-              kind: Subnet
-              metadata:
-                labels:
-                  portal-kombat.io/network-component: subnet
-                  portal-kombat.io/network-tier: private
-              spec:
-                providerConfigRef:
-                  name: default
-                forProvider:
-                  region: us-east-2
-                  mapPublicIpOnLaunch: false
-                  tags:
-                    ManagedBy: Crossplane
-                    Project: portal-kombat
-                    Environment: dev
-                  vpcIdSelector:
-                    matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-component: vpc
-                deletionPolicy: Delete
-            patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
@@ -505,14 +482,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[0].id
-          - name: private-subnet-1
-            patches:
-              - type: PatchSet
-                patchSetName: provider-config
-              - type: PatchSet
-                patchSetName: region
-              - type: PatchSet
-                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -535,7 +504,14 @@ spec:
                     matchLabels:
                       portal-kombat.io/network-component: vpc
                 deletionPolicy: Delete
+          - name: private-subnet-1
             patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
@@ -572,14 +548,6 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[1].id
-          - name: private-subnet-2
-            patches:
-              - type: PatchSet
-                patchSetName: provider-config
-              - type: PatchSet
-                patchSetName: region
-              - type: PatchSet
-                patchSetName: standard-tags
             base:
               apiVersion: ec2.aws.upbound.io/v1beta1
               kind: Subnet
@@ -602,7 +570,14 @@ spec:
                     matchLabels:
                       portal-kombat.io/network-component: vpc
                 deletionPolicy: Delete
+          - name: private-subnet-2
             patches:
+              - type: PatchSet
+                patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+              - type: PatchSet
+                patchSetName: standard-tags
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: metadata.labels[portal-kombat.io/network-claim]
@@ -639,6 +614,28 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.privateSubnets[2].id
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  portal-kombat.io/network-component: subnet
+                  portal-kombat.io/network-tier: private
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  region: us-east-2
+                  mapPublicIpOnLaunch: false
+                  tags:
+                    ManagedBy: Crossplane
+                    Project: portal-kombat
+                    Environment: dev
+                  vpcIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: vpc
+                deletionPolicy: Delete
           - name: public-route-table-0
             patches:
               - type: PatchSet
