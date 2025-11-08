@@ -5,6 +5,10 @@ cert-manager:
     leaderElection:
       namespace: cert-manager
 
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::654654563406:role/cert-manager-sa-role
+
 
   resources:
     requests:
