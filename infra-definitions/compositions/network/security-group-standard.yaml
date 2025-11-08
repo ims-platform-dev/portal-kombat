@@ -2201,6 +2201,9 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
+
           # Default egress rule created when autoCreateDefaultEgress=true (default)
           # Skipped via crossplane.io/skip annotation when false or when explicit egress rules defined
           - name: egress-rule-default
@@ -2234,6 +2237,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
 # Security Group Reference Resolution (Future Feature)
 #
