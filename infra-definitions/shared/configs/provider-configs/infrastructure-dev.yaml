@@ -4,7 +4,7 @@
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
-  name: dev-account
+  name: infrastructure-dev
 spec:
   credentials:
     source: IRSA

@@ -1,0 +1,75 @@
+---
+# Application Tier Security Group
+#
+# Allows traffic from load balancer on app ports, handles north-south traffic
+# Use case: Application servers, microservices, API servers
+apiVersion: network.platform.example/v1alpha1
+kind: SecurityGroup
+metadata:
+  name: app-tier
+  namespace: default
+spec:
+  parameters:
+    environment: dev
+    purpose: app-tier
+    region: us-east-2
+    vpcIdRef:
+      name: dev-shared-vpc
+    providerConfig: infrastructure-dev
+    sgDescription: "Application tier security group for microservices"
+
+    ingressRules:
+      # Allow HTTP from web tier
+      - protocol: tcp
+        fromPort: 80
+        toPort: 80
+        sourceSecurityGroupRef:
+          name: web-tier
+        description: "Allow HTTP/80 from web-tier-sg"
+
+      # Allow HTTPS from web tier
+      - protocol: tcp
+        fromPort: 443
+        toPort: 443
+        sourceSecurityGroupRef:
+          name: web-tier
+        description: "Allow HTTPS/443 from web-tier-sg"
+
+      # Allow SSH from bastion for debugging
+      - protocol: tcp
+        fromPort: 22
+        toPort: 22
+        sourceSecurityGroupRef:
+          name: bastion
+        description: "Allow SSH/22 from bastion-sg"
+
+    egressRules:
+      # Allow HTTPS to Internet (for external APIs)
+      - protocol: tcp
+        fromPort: 443
+        toPort: 443
+        cidrBlocks:
+          - 0.0.0.0/0
+        description: "Allow HTTPS/443 to Internet"
+
+      # Allow DNS to Internet
+      - protocol: udp
+        fromPort: 53
+        toPort: 53
+        cidrBlocks:
+          - 0.0.0.0/0
+        description: "Allow DNS/53 to Internet"
+
+      # Allow app to database
+      - protocol: tcp
+        fromPort: 5432
+        toPort: 5432
+        sourceSecurityGroupRef:
+          name: database-tier
+        description: "Allow PostgreSQL/5432 to database-tier-sg"
+
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      purpose: app-tier

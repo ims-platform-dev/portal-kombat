@@ -4,7 +4,7 @@
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
-  name: management-account
+  name: management
 spec:
   credentials:
     source: IRSA
