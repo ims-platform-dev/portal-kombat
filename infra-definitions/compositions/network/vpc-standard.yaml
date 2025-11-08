@@ -642,8 +642,7 @@ spec:
                       portal-kombat.io/network-component: internet-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: public-route-table-association-0
             patches:
@@ -682,12 +681,10 @@ spec:
                   region: us-east-2
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                   subnetIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-subnet-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: public-route-table-1
             patches:
@@ -777,8 +774,7 @@ spec:
                       portal-kombat.io/network-component: internet-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: public-route-table-association-1
             patches:
@@ -817,12 +813,10 @@ spec:
                   region: us-east-2
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                   subnetIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-subnet-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: public-route-table-2
             patches:
@@ -912,8 +906,7 @@ spec:
                       portal-kombat.io/network-component: internet-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: public-route-table-association-2
             patches:
@@ -952,12 +945,10 @@ spec:
                   region: us-east-2
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                   subnetIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-subnet-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: nat-elastic-ip
             patches:
@@ -1065,8 +1056,7 @@ spec:
                     Environment: dev
                   subnetIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-subnet-name: placeholder
+                    matchLabels: {}
                   allocationIdSelector:
                     matchControllerRef: true
                     matchLabels:
@@ -1121,8 +1111,7 @@ spec:
                       portal-kombat.io/network-component: nat-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: private-route-default-1
             patches:
@@ -1166,8 +1155,7 @@ spec:
                       portal-kombat.io/network-component: nat-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
-                    matchLabels:
-                      portal-kombat.io/network-route-table-name: placeholder
+                    matchLabels: {}
                 deletionPolicy: Delete
           - name: private-route-default-2
             patches:
