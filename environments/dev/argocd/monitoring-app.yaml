@@ -1,0 +1,71 @@
+---
+# kube-prometheus-stack ArgoCD Application
+# Manages Prometheus, Grafana, Alertmanager, and related monitoring components
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-k8s-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"  # Deploy after ingress controller
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io  # Ensure proper cleanup
+spec:
+  project: default
+
+  source:
+    # Helm chart from prometheus-community
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 79.4.0  # Latest stable version
+
+    helm:
+      releaseName: kube-prometheus-stack
+      # Values file from repository
+      valueFiles:
+        - $values/environments/dev/cluster-addons/monitoring/values.yaml
+
+  # Additional source for values file from Git repo
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 79.4.0
+      helm:
+        releaseName: kube-prometheus-stack
+
+    - repoURL: https://github.com/acarter-ims/portal-kombat.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-prometheus-stack
+
+  syncPolicy:
+    automated:
+      prune: true        # Remove resources that are no longer defined
+      selfHeal: true     # Automatically sync when drift is detected
+      allowEmpty: false  # Don't sync if no resources
+
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true  # Use server-side apply for better CRD handling
+      - RespectIgnoreDifferences=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore certain fields that are expected to differ
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Allow manual scaling
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas  # Allow manual scaling

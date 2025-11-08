@@ -1,0 +1,176 @@
+---
+# kube-prometheus-stack Helm values
+# Deployed via ArgoCD
+# Chart: prometheus-community/kube-prometheus-stack
+
+# Grafana Configuration
+grafana:
+  # Resource limits
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+
+  # Grafana service configuration
+  # Note: Ingress is managed separately in ingress-grafana.yaml
+  service:
+    type: ClusterIP  # Changed from LoadBalancer since we use Ingress now
+
+  # Dashboard providers configuration
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: default
+        orgId: 1
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+  # Pre-configured dashboards from Grafana.com
+  dashboards:
+    default:
+      # ArgoCD dashboard
+      argocd:
+        gnetId: 14584
+        revision: 1
+        datasource: prometheusdatasource
+      # Crossplane dashboard
+      crossplane:
+        gnetId: 21169
+        revision: 1
+        datasource: prometheusdatasource
+      # EKS cluster dashboard
+      eks:
+        gnetId: 14623
+        revision: 1
+        datasource: prometheusdatasource
+      # EKS control plane dashboard
+      ekscontrolplane:
+        gnetId: 21192
+        revision: 1
+        datasource: prometheusdatasource
+
+  # Datasource configuration
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheusdatasource
+        access: proxy
+        url: http://kube-prometheus-stack-prometheus.kube-prometheus-stack:9090/
+        isDefault: true  # Changed to true for convenience
+      deleteDatasources:
+      - name: Prometheus
+
+# Prometheus Configuration
+prometheus:
+  # Prometheus service configuration
+  # Note: Ingress is managed separately in ingress-prometheus.yaml
+  service:
+    type: ClusterIP  # Changed from LoadBalancer since we use Ingress now
+
+  # Persistent storage configuration
+  prometheusSpec:
+    retention: 30d  # Retain metrics for 30 days
+    retentionSize: "15GB"  # Limit storage to 15GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi  # Increased from default 20GB
+
+  # Additional ServiceMonitors for custom scraping
+  additionalServiceMonitors:
+  - name: argocd
+    namespaceSelector:
+      matchNames:
+      - argocd
+    selector:
+      matchLabels:
+        prometheus.io/scrape: "true"
+    endpoints:
+    - port: metrics
+
+  # Additional PodMonitors for Crossplane
+  additionalPodMonitors:
+  - name: crossplane
+    namespaceSelector:
+      matchNames:
+      - crossplane-system
+    selector: {}
+    podMetricsEndpoints:
+    - port: metrics
+
+# Alertmanager Configuration
+alertmanager:
+  # Alertmanager service configuration
+  # Note: Ingress is managed separately in ingress-alertmanager.yaml
+  service:
+    type: ClusterIP  # Use ClusterIP since we have Ingress
+
+  # Persistent storage for Alertmanager
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# Prometheus Operator configuration
+prometheusOperator:
+  # Resource limits for the operator
+  resources:
+    limits:
+      cpu: 200m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# kube-state-metrics configuration
+kubeStateMetrics:
+  enabled: true
+
+# Node exporter configuration
+nodeExporter:
+  enabled: true
+
+# Default rules configuration
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverSlos: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeScheduler: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true

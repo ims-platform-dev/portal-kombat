@@ -1,6 +1,6 @@
 ---
 # Platform Services App-of-Apps
-# Deploys: cert-manager → external-dns → nginx-ingress
+# Deploys: cert-manager → external-dns → nginx-ingress → monitoring
 # Each service has sync-wave ordering to ensure proper dependency handling
 # Note: EBS CSI driver and cluster-autoscaler are deployed via Terraform as EKS add-ons
 
@@ -36,6 +36,59 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-k8s-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"  # After ingress controller
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # Helm chart from prometheus-community
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 79.4.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/environments/dev/cluster-addons/monitoring/values.yaml
+    # Values file from Git repo
+    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-prometheus-stack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas
 
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -79,6 +132,59 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: dev-k8s-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"  # After ingress controller
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # Helm chart from prometheus-community
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 79.4.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/environments/dev/cluster-addons/monitoring/values.yaml
+    # Values file from Git repo
+    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-prometheus-stack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: dev-k8s-nginx-ingress
   namespace: argocd
   annotations:
@@ -112,4 +218,57 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-k8s-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"  # After ingress controller
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # Helm chart from prometheus-community
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 79.4.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/environments/dev/cluster-addons/monitoring/values.yaml
+    # Values file from Git repo
+    - repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-prometheus-stack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas
 
