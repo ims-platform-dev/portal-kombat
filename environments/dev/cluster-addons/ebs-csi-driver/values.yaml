@@ -11,7 +11,7 @@ aws-ebs-csi-driver:
       create: true
       name: ebs-csi-controller-sa
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ebs-csi-driver-role"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-ebs-csi-driver"
 
     # Resource limits for cost control
     resources:
@@ -32,7 +32,7 @@ aws-ebs-csi-driver:
       create: true
       name: ebs-csi-node-sa
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ebs-csi-driver-role"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::654654563406:role/raiden-control-plane-ebs-csi-driver"
 
     resources:
       limits:

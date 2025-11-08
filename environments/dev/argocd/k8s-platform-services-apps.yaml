@@ -1,8 +1,44 @@
 ---
 # Platform Services App-of-Apps
-# Deploys: cert-manager → external-dns → nginx-ingress → monitoring
+# Deploys: ebs-csi-driver → cert-manager → external-dns → nginx-ingress → monitoring
 # Each service has sync-wave ordering to ensure proper dependency handling
-# Note: EBS CSI driver and cluster-autoscaler are deployed via Terraform as EKS add-ons
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-k8s-ebs-csi-driver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"  # Before cert-manager (storage needed first)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:ims-platform-dev/portal-kombat.git
+    targetRevision: main
+    path: environments/dev/cluster-addons/ebs-csi-driver
+    helm:
+      releaseName: aws-ebs-csi-driver
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # kube-system already exists
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
 
 ---
 apiVersion: argoproj.io/v1alpha1
