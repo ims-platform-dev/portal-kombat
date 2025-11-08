@@ -1,54 +1,51 @@
-# ---
-# # Dev shared VPC claim leveraging the standard VPC composition with NAT enabled
-# # Toggle natGateway.enabled to false if private workloads do not require outbound internet access
-# apiVersion: aws.plt.intelerad.io/v1alpha1
-# kind: VPCNetwork
-# metadata:
-#   name: dev-shared-vpc
-#   namespace: default
-# spec:
-#   parameters:
-#     vpcCidr: 10.42.0.0/16
-#     region: us-east-2
-#     availabilityZones:
-#       - us-east-2a
-#       - us-east-2b
-#       - us-east-2c
-#     publicSubnets:
-#       - name: dev-shared-public-a
-#         cidr: 10.42.0.0/20
-#         az: us-east-2a
-#         mapPublicIpOnLaunch: true
-#       - name: dev-shared-public-b
-#         cidr: 10.42.16.0/20
-#         az: us-east-2b
-#         mapPublicIpOnLaunch: true
-#       - name: dev-shared-public-c
-#         cidr: 10.42.32.0/20
-#         az: us-east-2c
-#         mapPublicIpOnLaunch: true
-#     privateSubnets:
-#       - name: dev-shared-private-a
-#         cidr: 10.42.48.0/20
-#         az: us-east-2a
-#       - name: dev-shared-private-b
-#         cidr: 10.42.64.0/20
-#         az: us-east-2b
-#       - name: dev-shared-private-c
-#         cidr: 10.42.80.0/20
-#         az: us-east-2c
-#     natGateway:
-#       enabled: true
-#       publicSubnetName: dev-shared-public-a
-#       allocateElasticIp: true
-#     tags:
-#       managedBy: Crossplane
-#       project: portal-kombat
-#       environment: dev
-#       additional:
-#         CostCenter: platform-networking
-#     providerConfig: default
-#   writeConnectionSecretToRef:
-#     name: dev-shared-vpc-connection
-#     namespace: crossplane-system
+---
+# Dev shared VPC claim leveraging the standard VPC composition with NAT enabled
+# Toggle natGateway.enabled to false if private workloads do not require outbound internet access
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: VPCNetwork
+metadata:
+  name: dev-shared-vpc
+  namespace: default
+spec:
+  parameters:
+    vpcCidr: 10.42.0.0/16
+    region: us-east-2
+    availabilityZones:
+      - us-east-2a
+      - us-east-2b
+      - us-east-2c
+    publicSubnets:
+      - name: dev-shared-public-a
+        cidr: 10.42.0.0/20
+        az: us-east-2a
+        mapPublicIpOnLaunch: true
+      - name: dev-shared-public-b
+        cidr: 10.42.16.0/20
+        az: us-east-2b
+        mapPublicIpOnLaunch: true
+      - name: dev-shared-public-c
+        cidr: 10.42.32.0/20
+        az: us-east-2c
+        mapPublicIpOnLaunch: true
+    privateSubnets:
+      - name: dev-shared-private-a
+        cidr: 10.42.48.0/20
+        az: us-east-2a
+      - name: dev-shared-private-b
+        cidr: 10.42.64.0/20
+        az: us-east-2b
+      - name: dev-shared-private-c
+        cidr: 10.42.80.0/20
+        az: us-east-2c
+    natGateway:
+      enabled: true
+      publicSubnetName: dev-shared-public-a
+      allocateElasticIp: true
+    tags:
+      managedBy: Crossplane
+      project: portal-kombat
+      environment: dev
+      additional:
+        CostCenter: platform-networking
+    providerConfig: default
 
