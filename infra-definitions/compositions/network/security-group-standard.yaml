@@ -467,6 +467,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Ingress Rule 6
           - name: ingress-rule-6
