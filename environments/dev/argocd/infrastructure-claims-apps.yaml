@@ -24,9 +24,39 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 10s
         factor: 2
         maxDuration: 5m
+  # Ignore differences in Crossplane-managed fields that don't affect desired state
+  ignoreDifferences:
+    # Ignore all status fields (Crossplane updates these)
+    - group: "*"
+      kind: "*"
+      jsonPointers:
+        - /status
+    # Ignore metadata fields added by Crossplane controllers
+    - group: "*"
+      kind: "*"
+      jqPathExpressions:
+        - '.metadata.annotations["crossplane.io/external-name"]'
+        - '.metadata.annotations["crossplane.io/composition-resource-name"]'
+        - '.metadata.managedFields'
+    # Ignore Crossplane Composite Resource specific fields
+    - group: "*.plt.intelerad.io"
+      kind: "*"
+      jsonPointers:
+        - /spec/resourceRefs
+        - /spec/claimRef
+    # Ignore provider config default values
+    - group: "*.aws.upbound.io"
+      kind: "*"
+      managedFieldsManagers:
+        - crossplane
+        - provider-aws-ec2
+        - provider-aws-s3
+        - provider-aws-rds
+        - provider-aws-iam

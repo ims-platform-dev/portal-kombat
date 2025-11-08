@@ -48,8 +48,7 @@ spec:
                 fromFieldPath: spec.parameters.tags
                 toFieldPath: spec.forProvider.tags
                 policy:
-                  mergeOptions:
-                    appendSlice: true
+                  toFieldPath: MergeObjects
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.environment
                 toFieldPath: spec.forProvider.tags[0]

@@ -91,8 +91,7 @@ spec:
                 fromFieldPath: metadata.labels
                 toFieldPath: metadata.labels
                 policy:
-                  mergeOptions:
-                    keepMapValues: true
+                  toFieldPath: MergeObjects
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.vpcCidr
                 toFieldPath: spec.forProvider.cidrBlock
