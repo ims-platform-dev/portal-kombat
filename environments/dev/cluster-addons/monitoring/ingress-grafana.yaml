@@ -23,7 +23,7 @@ spec:
     secretName: grafana-tls
   rules:
   - host: pkgrafana.plt-dev.inteleradhealth.com
-      http:
+    http:
       paths:
       - path: /
         pathType: Prefix
