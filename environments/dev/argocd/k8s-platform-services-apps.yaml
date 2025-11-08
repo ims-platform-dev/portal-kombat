@@ -140,6 +140,11 @@ spec:
           value: ClusterIP
       values: |
         grafana:
+          defaultDashboardsEnabled: true
+          sidecar:
+            datasources:
+              enabled: true
+              defaultDatasourceEnabled: false
           resources:
             limits:
               cpu: "1"
