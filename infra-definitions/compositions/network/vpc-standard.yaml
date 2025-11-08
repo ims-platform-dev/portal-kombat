@@ -29,7 +29,7 @@ spec:
                 fromFieldPath: spec.parameters.providerConfig
                 toFieldPath: spec.providerConfigRef.name
                 policy:
-                  fromFieldPath: Optional
+                  fromFieldPath: Required
           - name: region
             patches:
               - type: FromCompositeFieldPath
