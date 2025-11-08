@@ -993,7 +993,7 @@ spec:
                     Environment: dev
                 deletionPolicy: Delete
             readinessChecks:
-              - type: MatchTrue
+              - type: NonEmpty
                 fieldPath: status.atProvider.id
           - name: nat-gateway
             patches:
@@ -1063,7 +1063,7 @@ spec:
                       portal-kombat.io/network-component: nat-elastic-ip
                 deletionPolicy: Delete
             readinessChecks:
-              - type: MatchTrue
+              - type: NonEmpty
                 fieldPath: status.atProvider.id
             connectionDetails:
               - name: natGatewayId
