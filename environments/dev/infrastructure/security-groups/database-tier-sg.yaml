@@ -21,14 +21,18 @@ spec:
       - protocol: tcp
         fromPort: 5432
         toPort: 5432
-        sourceSecurityGroupId: sg-app123456  # Placeholder - replace with actual app-tier SG ID
+        sourceSecurityGroupIdSelector:
+          matchLabels:
+            portal-kombat.io/security-group: app-tier
         description: "Allow PostgreSQL/5432 from app-tier-sg"
 
       # Allow PostgreSQL from bastion
       - protocol: tcp
         fromPort: 5432
         toPort: 5432
-        sourceSecurityGroupId: sg-bastion789  # Placeholder - replace with actual bastion SG ID
+        sourceSecurityGroupIdSelector:
+          matchLabels:
+            portal-kombat.io/security-group: bastion
         description: "Allow PostgreSQL/5432 from bastion-sg"
 
     egressRules:

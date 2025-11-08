@@ -14,7 +14,7 @@ spec:
     purpose: web-tier
     region: us-east-2
     vpcIdRef:
-      name: dev-vpc  # References existing VPC claim
+      name: dev-shared-vpc  # References existing VPC claim
     providerConfig: dev-account
 
     ingressRules:
