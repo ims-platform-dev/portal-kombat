@@ -19,4 +19,5 @@ spec:
          
       selector:
         dnsZones:
+        - 'plt-dev.inteleradhealth.com'
         - '*.plt-dev.inteleradhealth.com'

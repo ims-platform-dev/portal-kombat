@@ -1,0 +1,36 @@
+---
+# ArgoCD Server Ingress
+# Exposes ArgoCD UI and API via NGINX ingress controller
+# URL: https://pkargocd.plt-dev.inteleradhealth.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    # Cert-manager will automatically provision TLS certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod-dns"
+    # External-DNS will create Route53 record
+    external-dns.alpha.kubernetes.io/hostname: pkargocd.plt-dev.inteleradhealth.com
+    # NGINX ingress annotations for ArgoCD
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # ArgoCD uses HTTPS backend
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # ArgoCD specific annotations
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - pkargocd.plt-dev.inteleradhealth.com
+    secretName: argocd-server-tls
+  rules:
+  - host: pkargocd.plt-dev.inteleradhealth.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argo-cd-argocd-server
+            port:
+              number: 443

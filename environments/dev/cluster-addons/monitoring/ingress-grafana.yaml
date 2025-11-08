@@ -1,0 +1,34 @@
+---
+# Grafana Ingress
+# Exposes Grafana dashboard via NGINX ingress controller
+# URL: https://pkgrafana.plt-dev.inteleradhealth.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: kube-prometheus-stack
+  annotations:
+    # Cert-manager will automatically provision TLS certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod-dns"
+    # External-DNS will create Route53 record
+    external-dns.alpha.kubernetes.io/hostname: pkgrafana.plt-dev.inteleradhealth.com
+    # NGINX ingress annotations
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - pkgrafana.plt-dev.inteleradhealth.com
+    secretName: grafana-tls
+  rules:
+  - host: pkgrafana.plt-dev.inteleradhealth.com
+      http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kube-prometheus-stack-grafana
+            port:
+              number: 80
