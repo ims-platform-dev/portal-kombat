@@ -1551,6 +1551,10 @@ spec:
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
+                  transitGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: transit-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
                     matchLabels:
@@ -1610,6 +1614,10 @@ spec:
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
+                  transitGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: transit-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
                     matchLabels:
@@ -1668,6 +1676,10 @@ spec:
                 forProvider:
                   region: us-east-2
                   destinationCidrBlock: placeholder
+                  transitGatewayIdSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      portal-kombat.io/network-component: transit-gateway
                   routeTableIdSelector:
                     matchControllerRef: true
                     matchLabels:
