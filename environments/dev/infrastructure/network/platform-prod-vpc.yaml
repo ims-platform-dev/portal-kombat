@@ -62,4 +62,3 @@ spec:
   # Connection secret stores VPC ID and subnet IDs for use by other resources
   writeConnectionSecretToRef:
     name: platform-prod-vpc-connection
-    namespace: crossplane-system
