@@ -15,7 +15,7 @@ spec:
     region: us-east-2
     vpcIdRef:
       name: dev-shared-vpc
-    providerConfig: infrastructure-dev
+    providerConfig: default
     sgDescription: "Application tier security group for microservices"
 
     ingressRules:
