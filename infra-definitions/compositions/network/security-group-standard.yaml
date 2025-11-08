@@ -103,10 +103,10 @@ spec:
                 policy:
                   fromFieldPath: Optional
 
-              # VPC ID from claim reference
+              # VPC ID from claim reference (match by claim name)
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.vpcIdRef.name
-                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[portal-kombat.io/network-claim]
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[crossplane.io/claim-name]
                 policy:
                   fromFieldPath: Optional
 
