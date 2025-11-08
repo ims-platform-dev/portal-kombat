@@ -51,49 +51,29 @@ spec:
                   toFieldPath: MergeObjects
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.environment
-                toFieldPath: spec.forProvider.tags[0]
+                toFieldPath: spec.forProvider.tags[Environment]
                 transforms:
                   - type: map
                     map:
-                      dev: '{"key":"Environment","value":"dev"}'
-                      staging: '{"key":"Environment","value":"staging"}'
-                      prod: '{"key":"Environment","value":"prod"}'
-                  - type: convert
-                    convert:
-                      toType: object
-                      format: json
+                      dev: 'dev'
+                      staging: 'staging'
+                      prod: 'prod'
               - type: CombineFromComposite
                 combine:
                   variables:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: '%s'
-                toFieldPath: spec.forProvider.tags[1]
-                transforms:
-                  - type: map
-                    map:
-                      '*': '{"key":"ManagedBy","value":"Crossplane"}'
-                  - type: convert
-                    convert:
-                      toType: object
-                      format: json
+                    fmt: 'Crossplane'
+                toFieldPath: spec.forProvider.tags[ManagedBy]
               - type: CombineFromComposite
                 combine:
                   variables:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: '%s'
-                toFieldPath: spec.forProvider.tags[2]
-                transforms:
-                  - type: map
-                    map:
-                      '*': '{"key":"Project","value":"portal-kombat"}'
-                  - type: convert
-                    convert:
-                      toType: object
-                      format: json
+                    fmt: 'portal-kombat'
+                toFieldPath: spec.forProvider.tags[Project]
 
         resources:
           # Main SecurityGroup resource
