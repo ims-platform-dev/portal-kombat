@@ -8,14 +8,10 @@ metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # Cert-manager will automatically provision TLS certificate
     cert-manager.io/cluster-issuer: "letsencrypt-prod-dns"
-    # External-DNS will create Route53 record
     external-dns.alpha.kubernetes.io/hostname: pkargocd.plt-dev.inteleradhealth.com
-    # NGINX ingress annotations for ArgoCD
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # ArgoCD uses HTTPS backend
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS" 
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    # ArgoCD specific annotations
     nginx.ingress.kubernetes.io/ssl-passthrough: "false"
 spec:
   ingressClassName: nginx

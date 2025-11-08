@@ -1,7 +1,4 @@
 ---
-# GP3 StorageClass - Default for Dev Environment
-# Use for: Prometheus, Grafana, general stateful workloads
-# Benefits: Cost-effective, good performance, expandable volumes
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -13,15 +10,11 @@ parameters:
   type: gp3
   fsType: ext4
   encrypted: "true"
-  # GP3 defaults: 3000 IOPS, 125 MB/s throughput
-  # Can be customized per PVC if needed
-volumeBindingMode: WaitForFirstConsumer  # Only provision when pod is scheduled
-reclaimPolicy: Delete  # Delete volumes when PVC is deleted (dev environment)
-allowVolumeExpansion: true  # Allow resizing volumes without downtime
+volumeBindingMode: WaitForFirstConsumer 
+reclaimPolicy: Delete  
+allowVolumeExpansion: true  
 
 ---
-# GP3-Retain StorageClass - For data that should survive pod deletion
-# Use for: Development databases, testing data you want to keep
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -32,13 +25,10 @@ parameters:
   fsType: ext4
   encrypted: "true"
 volumeBindingMode: WaitForFirstConsumer
-reclaimPolicy: Retain  # Keep volumes when PVC is deleted (manual cleanup required)
+reclaimPolicy: Retain  
 allowVolumeExpansion: true
 
 ---
-# IO2 StorageClass - High-Performance for Databases
-# Use for: Production-like database testing, high IOPS workloads
-# Note: More expensive, use sparingly in dev
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -48,14 +38,13 @@ parameters:
   type: io2
   fsType: ext4
   encrypted: "true"
-  iops: "10000"  # Guaranteed IOPS (can be customized per PVC)
+  iops: "10000" 
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 
 ---
-# Legacy GP2 StorageClass - Mark as deprecated
-# Keeping for backward compatibility only
+
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
