@@ -1793,6 +1793,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 12
           - name: egress-rule-12
@@ -1842,6 +1844,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 13
           - name: egress-rule-13
@@ -1891,6 +1895,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 14
           - name: egress-rule-14
@@ -1940,6 +1946,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 15
           - name: egress-rule-15
@@ -1989,6 +1997,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 16
           - name: egress-rule-16
@@ -2038,6 +2048,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 17
           - name: egress-rule-17
@@ -2087,6 +2099,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 18
           - name: egress-rule-18
@@ -2136,6 +2150,8 @@ spec:
                   fromFieldPath: Optional
               - type: PatchSet
                 patchSetName: provider-config
+              - type: PatchSet
+                patchSetName: region
 
           # Egress Rule 19
           - name: egress-rule-19
