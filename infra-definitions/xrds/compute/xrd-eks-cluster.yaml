@@ -14,7 +14,15 @@ spec:
     kind: EKSCluster
     plural: eksclusters
   defaultCompositionRef:
-    name: ekscluster-standard
+    name: ekscluster-production
+
+  connectionSecretKeys:
+    - kubeconfig
+    - endpoint
+    - ca-certificate-authority-data
+    - oidc-issuer-url
+    - cluster-name
+    - region
   versions:
     - name: v1alpha1
       served: true
@@ -30,27 +38,547 @@ spec:
                   type: object
                   description: EKS cluster configuration parameters
                   properties:
+   
                     clusterName:
                       type: string
                       description: Name of the EKS cluster
+                    clusterVersion:
+                      type: string
+                      description: Kubernetes version (e.g., "1.32", "1.31", "1.30")
+                      default: "1.32"
                     region:
                       type: string
                       description: AWS region for the cluster
                       default: us-east-2
-                    version:
+
+                    vpcConfig:
+                      type: object
+                      description: VPC and network configuration for the cluster
+                      properties:
+                        vpcId:
+                          type: string
+                          description: Existing VPC ID where the cluster will be deployed
+                        subnetIds:
+                          type: array
+                          description: List of subnet IDs for the cluster control plane and nodes
+                          items:
+                            type: string
+                          minItems: 2
+                        clusterEndpointPublicAccess:
+                          type: boolean
+                          description: Whether the cluster API endpoint should be publicly accessible
+                          default: false
+                      required:
+                        - vpcId
+                        - subnetIds
+
+                    enableIrsa:
+                      type: boolean
+                      description: Enable IAM Roles for Service Accounts (OIDC provider)
+                      default: true
+                    authenticationMode:
                       type: string
-                      description: Kubernetes version
-                      default: "1.28"
-                    vpcCidr:
-                      type: string
-                      description: VPC CIDR block
-                      default: "10.0.0.0/16"
+                      description: Authentication mode for the cluster
+                      enum:
+                        - API
+                        - API_AND_CONFIG_MAP
+                      default: API
+                    enableClusterCreatorAdminPermissions:
+                      type: boolean
+                      description: Grant cluster admin permissions to the IAM principal creating the cluster
+                      default: true
+
+
+                    clusterUpgradePolicy:
+                      type: object
+                      description: Cluster upgrade support configuration
+                      properties:
+                        supportType:
+                          type: string
+                          description: Type of support for cluster upgrades
+                          enum:
+                            - STANDARD
+                            - EXTENDED
+                          default: STANDARD
+
+
+                    nodeGroups:
+                      type: array
+                      description: Array of managed node group configurations
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Logical name for the node group (e.g., "kube", "storage", "services")
+                          instanceTypes:
+                            type: array
+                            description: List of EC2 instance types for the node group
+                            items:
+                              type: string
+                            minItems: 1
+                          minSize:
+                            type: integer
+                            description: Minimum number of nodes in the autoscaling group
+                            minimum: 0
+                          maxSize:
+                            type: integer
+                            description: Maximum number of nodes in the autoscaling group
+                            minimum: 1
+                          desiredSize:
+                            type: integer
+                            description: Desired number of nodes in the node group
+                            minimum: 0
+                          amiType:
+                            type: string
+                            description: AMI type for the nodes
+                            enum:
+                              - AL2_x86_64
+                              - AL2_x86_64_GPU
+                              - AL2_ARM_64
+                              - AL2023_x86_64_STANDARD
+                              - AL2023_ARM_64_STANDARD
+                            default: AL2023_x86_64_STANDARD
+                          keyName:
+                            type: string
+                            description: EC2 SSH key pair name for node access
+                          useCustomLaunchTemplate:
+                            type: boolean
+                            description: Whether to create a custom launch template for this node group
+                            default: true
+                          blockDeviceMappings:
+                            type: array
+                            description: Block device mappings for custom EBS volumes
+                            items:
+                              type: object
+                              properties:
+                                deviceName:
+                                  type: string
+                                  description: Device name (e.g., "/dev/xvda")
+                                volumeSize:
+                                  type: integer
+                                  description: Volume size in GB
+                                  minimum: 20
+                                volumeType:
+                                  type: string
+                                  description: EBS volume type
+                                  enum:
+                                    - gp2
+                                    - gp3
+                                    - io1
+                                    - io2
+                                  default: gp3
+                                encrypted:
+                                  type: boolean
+                                  description: Whether to encrypt the volume
+                                  default: true
+                                deleteOnTermination:
+                                  type: boolean
+                                  description: Whether to delete volume on instance termination
+                                  default: true
+                              required:
+                                - deviceName
+                                - volumeSize
+                          labels:
+                            type: object
+                            description: Kubernetes labels to apply to nodes in this group
+                            additionalProperties:
+                              type: string
+                          tags:
+                            type: object
+                            description: AWS tags for resources in this node group
+                            additionalProperties:
+                              type: string
+                        required:
+                          - name
+                          - instanceTypes
+                          - minSize
+                          - maxSize
+                          - desiredSize
+                      minItems: 1
+
+
+                    cloudInitConfig:
+                      type: object
+                      description: CloudInit/NodeAdm configuration for node initialization (AL2023)
+                      properties:
+                        localStorage:
+                          type: object
+                          description: Local storage configuration for instance types with NVME disks
+                          properties:
+                            strategy:
+                              type: string
+                              description: Strategy for local disk configuration
+                              enum:
+                                - RAID0
+                                - MOUNT
+                              default: RAID0
+                        kubelet:
+                          type: object
+                          description: Kubelet configuration settings
+                          properties:
+                            registryPullQPS:
+                              type: integer
+                              description: Registry pull rate limit (queries per second)
+                              minimum: 1
+                              maximum: 100
+                              default: 50
+
+   
+                    clusterAddons:
+                      type: object
+                      description: EKS managed add-ons configuration
+                      properties:
+                        coredns:
+                          type: object
+                          description: CoreDNS add-on configuration
+                          properties:
+                            enabled:
+                              type: boolean
+                              description: Whether to install CoreDNS add-on
+                              default: true
+                            mostRecent:
+                              type: boolean
+                              description: Use most recent version
+                              default: true
+                            preserve:
+                              type: boolean
+                              description: Preserve existing configuration on updates
+                              default: true
+                            timeouts:
+                              type: object
+                              description: Timeouts for add-on operations
+                              properties:
+                                create:
+                                  type: string
+                                  description: Timeout for create operation (e.g., "25m")
+                                  default: "25m"
+                                delete:
+                                  type: string
+                                  description: Timeout for delete operation (e.g., "10m")
+                                  default: "10m"
+                        vpcCni:
+                          type: object
+                          description: VPC-CNI add-on configuration
+                          properties:
+                            enabled:
+                              type: boolean
+                              description: Whether to install VPC-CNI add-on
+                              default: true
+                            mostRecent:
+                              type: boolean
+                              description: Use most recent version
+                              default: true
+                            beforeCompute:
+                              type: boolean
+                              description: Install before node groups are created
+                              default: true
+                        kubeProxy:
+                          type: object
+                          description: Kube-proxy add-on configuration
+                          properties:
+                            enabled:
+                              type: boolean
+                              description: Whether to install kube-proxy add-on
+                              default: true
+                            mostRecent:
+                              type: boolean
+                              description: Use most recent version
+                              default: true
+                            beforeCompute:
+                              type: boolean
+                              description: Install before node groups are created
+                              default: true
+                        eksPodIdentityAgent:
+                          type: object
+                          description: EKS Pod Identity Agent add-on configuration
+                          properties:
+                            enabled:
+                              type: boolean
+                              description: Whether to install Pod Identity Agent add-on
+                              default: true
+                            mostRecent:
+                              type: boolean
+                              description: Use most recent version
+                              default: true
+                            beforeCompute:
+                              type: boolean
+                              description: Install before node groups are created
+                              default: true
+                        awsEfsCsiDriver:
+                          type: object
+                          description: AWS EFS CSI Driver add-on configuration
+                          properties:
+                            enabled:
+                              type: boolean
+                              description: Whether to install EFS CSI Driver add-on
+                              default: false
+                            mostRecent:
+                              type: boolean
+                              description: Use most recent version
+                              default: true
+
+
+                    vpcCniConfig:
+                      type: object
+                      description: VPC-CNI custom networking configuration for separate pod IP space
+                      properties:
+                        enableCustomNetworking:
+                          type: boolean
+                          description: Enable VPC-CNI custom networking mode
+                          default: false
+                        eniConfigLabelDef:
+                          type: string
+                          description: Kubernetes label for ENIConfig selection
+                          default: "topology.kubernetes.io/zone"
+                        eniConfigSubnets:
+                          type: object
+                          description: ENIConfig subnet configuration per availability zone
+                          additionalProperties:
+                            type: object
+                            properties:
+                              subnetId:
+                                type: string
+                                description: Subnet ID for pod networking in this AZ
+                              securityGroups:
+                                type: array
+                                description: Security group IDs for pod ENIs
+                                items:
+                                  type: string
+                            required:
+                              - subnetId
+
+       
+                    podIdentityRoles:
+                      type: array
+                      description: IAM roles for EKS Pod Identity
+                      items:
+                        type: object
+                        properties:
+                          key:
+                            type: string
+                            description: Unique identifier for this role (e.g., "cluster-autoscaler", "efs-csi")
+                          attachClusterAutoscalerPolicy:
+                            type: boolean
+                            description: Attach cluster autoscaler IAM policy
+                            default: false
+                          attachAwsEfsCsiPolicy:
+                            type: boolean
+                            description: Attach EFS CSI driver IAM policy
+                            default: false
+                          attachAwsLbControllerPolicy:
+                            type: boolean
+                            description: Attach AWS Load Balancer Controller IAM policy
+                            default: false
+                          attachAwsVpcCniPolicy:
+                            type: boolean
+                            description: Attach VPC-CNI IAM policy
+                            default: false
+                          awsVpcCniEnableIpv4:
+                            type: boolean
+                            description: Enable IPv4 for VPC-CNI policy
+                            default: true
+                        required:
+                          - key
+
+
+                    podIdentityAssociations:
+                      type: array
+                      description: Pod Identity associations mapping service accounts to IAM roles
+                      items:
+                        type: object
+                        properties:
+                          namespace:
+                            type: string
+                            description: Kubernetes namespace for the service account
+                          serviceAccount:
+                            type: string
+                            description: Kubernetes service account name
+                          roleKey:
+                            type: string
+                            description: Reference to podIdentityRoles key
+                        required:
+                          - namespace
+                          - serviceAccount
+                          - roleKey
+
+                    # EKS Access Entries Configuration (Task 5)
+                    accessEntries:
+                      type: array
+                      description: EKS Access Entries for IAM principal cluster access
+                      items:
+                        type: object
+                        properties:
+                          principalArn:
+                            type: string
+                            description: IAM principal ARN (user or role)
+                          kubernetesGroups:
+                            type: array
+                            description: Kubernetes groups for RBAC
+                            items:
+                              type: string
+                          policyAssociations:
+                            type: array
+                            description: EKS access policies to associate
+                            items:
+                              type: object
+                              properties:
+                                policyArn:
+                                  type: string
+                                  description: EKS access policy ARN (e.g., arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy)
+                                accessScope:
+                                  type: object
+                                  description: Access scope for the policy
+                                  properties:
+                                    type:
+                                      type: string
+                                      description: Scope type
+                                      enum:
+                                        - cluster
+                                        - namespace
+                                      default: cluster
+                                    namespaces:
+                                      type: array
+                                      description: Namespaces for namespace-scoped access
+                                      items:
+                                        type: string
+                                  required:
+                                    - type
+                              required:
+                                - policyArn
+                                - accessScope
+                        required:
+                          - principalArn
+
+                    # EFS File Systems Configuration (Task 5)
+                    efsFileSystems:
+                      type: array
+                      description: EFS file systems for shared storage
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Name/identifier for the EFS file system
+                          encrypted:
+                            type: boolean
+                            description: Enable encryption at rest
+                            default: true
+                          mountTargets:
+                            type: object
+                            description: Mount targets per availability zone
+                            additionalProperties:
+                              type: object
+                              properties:
+                                subnetId:
+                                  type: string
+                                  description: Subnet ID for the mount target
+                              required:
+                                - subnetId
+                          securityGroupRules:
+                            type: object
+                            description: Security group rules for NFS access
+                            additionalProperties:
+                              type: object
+                              properties:
+                                description:
+                                  type: string
+                                  description: Rule description
+                                cidrBlocks:
+                                  type: array
+                                  description: CIDR blocks for ingress
+                                  items:
+                                    type: string
+                              required:
+                                - cidrBlocks
+                          enableBackupPolicy:
+                            type: boolean
+                            description: Enable automatic EFS backups
+                            default: false
+                        required:
+                          - name
+                          - mountTargets
+
+                    # KMS Key Administrators (Task 5)
+                    kmsKeyAdministrators:
+                      type: array
+                      description: IAM principal ARNs for KMS key administration
+                      items:
+                        type: string
+
+                    # Security Group Rules Configuration (Task 6)
+                    clusterSecurityGroupAdditionalRules:
+                      type: array
+                      description: Additional security group rules for the cluster security group
+                      items:
+                        type: object
+                        properties:
+                          description:
+                            type: string
+                            description: Rule description
+                          protocol:
+                            type: string
+                            description: Protocol (tcp, udp, icmp, or -1 for all)
+                          fromPort:
+                            type: integer
+                            description: Start of port range
+                          toPort:
+                            type: integer
+                            description: End of port range
+                          cidrBlocks:
+                            type: array
+                            description: CIDR blocks for the rule
+                            items:
+                              type: string
+                        required:
+                          - protocol
+                          - fromPort
+                          - toPort
+                          - cidrBlocks
+
+                    nodeSecurityGroupAdditionalRules:
+                      type: array
+                      description: Additional security group rules for the node security group
+                      items:
+                        type: object
+                        properties:
+                          description:
+                            type: string
+                            description: Rule description
+                          protocol:
+                            type: string
+                            description: Protocol (tcp, udp, icmp, or -1 for all)
+                          fromPort:
+                            type: integer
+                            description: Start of port range
+                          toPort:
+                            type: integer
+                            description: End of port range
+                          cidrBlocks:
+                            type: array
+                            description: CIDR blocks for the rule
+                            items:
+                              type: string
+                        required:
+                          - protocol
+                          - fromPort
+                          - toPort
+                          - cidrBlocks
+
+                    # Resource Tagging Configuration (Task 6)
+                    tags:
+                      type: object
+                      description: AWS tags to apply to all cluster resources
+                      additionalProperties:
+                        type: string
+
+                    # Legacy/placeholder fields (kept for backward compatibility)
                     environment:
                       type: string
                       description: Environment tag (dev, staging, prod)
                     nodeGroupConfig:
                       type: object
-                      description: Node group configuration
+                      description: "DEPRECATED: Use nodeGroups array instead. Single node group configuration for backward compatibility."
                       properties:
                         instanceTypes:
                           type: array
@@ -72,6 +600,33 @@ spec:
                           default: 4
                   required:
                     - clusterName
-                    - region
+                    - vpcConfig
               required:
                 - parameters
+            # Status fields (Task 6) - Exposed from managed resources
+            status:
+              type: object
+              properties:
+                clusterArn:
+                  type: string
+                  description: ARN of the EKS cluster
+                clusterEndpoint:
+                  type: string
+                  description: Kubernetes API server endpoint
+                oidcIssuerUrl:
+                  type: string
+                  description: OIDC provider URL for IRSA
+                certificateAuthorityData:
+                  type: string
+                  description: Base64-encoded certificate authority data
+                clusterSecurityGroupId:
+                  type: string
+                  description: Cluster security group ID
+                nodeSecurityGroupId:
+                  type: string
+                  description: Node security group ID
+                efsFileSystemIds:
+                  type: array
+                  description: EFS file system IDs
+                  items:
+                    type: string
