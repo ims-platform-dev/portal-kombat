@@ -1,0 +1,1753 @@
+     apiVersion: aws.plt.intelerad.io/v1alpha1
+     kind: EKSCluster
+     metadata:
+       name: prod-cluster
+       namespace: default
+     spec:
+       writeConnectionSecretToRef:
+         name: prod-cluster-connection
+
+       parameters:
+         clusterName: prod-cluster
+         clusterVersion: "1.34"
+         region: us-east-2
+
+         # VPC Configuration - use your existing VPC
+         vpcConfig:
+           vpcId: vpc-0f47efaeda5740a9b
+           subnetIds:
+             - subnet-014d13b7dbdd5cd0d # Private subnet AZ-a
+             - subnet-0fac91f2d389a7121  # Private subnet AZ-b
+             - subnet-07ee5bbdf9946a991  # Private subnet AZ-c
+           clusterEndpointPublicAccess: false  # Private API
+
+         # Single general-purpose node group (most common case)
+         nodeGroups:
+           - name: general
+             instanceTypes:
+               - m6a.xlarge
+               - m6a.2xlarge
+             minSize: 3
+             maxSize: 10
+             desiredSize: 5
+             amiType: AL2023_x86_64_STANDARD
+             keyName: ops-key
+             useCustomLaunchTemplate: true
+             blockDeviceMappings:
+               - deviceName: /dev/xvda
+                 volumeSize: 100
+                 volumeType: gp3
+                 encrypted: true
+                 deleteOnTermination: true
+             labels:
+               environment: production
+             tags:
+               Environment: production
+               ManagedBy: Crossplane
+
+         # Pod Identity for cluster autoscaler (essential for production)
+         podIdentityRoles:
+           - key: cluster-autoscaler
+             attachClusterAutoscalerPolicy: true
+
+         podIdentityAssociations:
+           - namespace: kube-system
+             serviceAccount: cluster-autoscaler
+             roleKey: cluster-autoscaler
+
+         # Resource tags
+         tags:
+           Environment: production
+           ManagedBy: Crossplane
+           Project: my-app
+# ---
+# # Composition: Production EKS Cluster
+# # Implements the XEKSCluster XRD with a complete production-ready EKS cluster configuration
+# # Including: cluster, node groups, add-ons, pod identity, access entries, EFS, and security groups
+# apiVersion: apiextensions.crossplane.io/v1
+# kind: Composition
+# metadata:
+#   name: ekscluster-production
+#   labels:
+#     crossplane.io/xrd: xeksclusters.aws.plt.intelerad.io
+#     provider: aws
+#     compute-layer: eks
+# spec:
+#   compositeTypeRef:
+#     apiVersion: aws.plt.intelerad.io/v1alpha1
+#     kind: XEKSCluster
+#   mode: Pipeline
+#   writeConnectionSecretsToNamespace: crossplane-system
+#   pipeline:
+#     - step: patch-and-transform
+#       functionRef:
+#         name: function-patch-and-transform
+#       input:
+#         apiVersion: pt.fn.crossplane.io/v1beta1
+#         kind: Resources
+#         patchSets:
+#           - name: providerConfigRef
+#             patches:
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.providerConfig
+#                 toFieldPath: spec.providerConfigRef.name
+#                 policy:
+#                   fromFieldPath: Optional
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "%s"
+#                       convert: ToLower
+
+
+#           - name: region
+#             patches:
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.region
+#                 toFieldPath: spec.forProvider.region
+#                 policy:
+#                   fromFieldPath: Optional
+
+#           - name: standard-tags
+#             patches:
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.tags
+#                 toFieldPath: spec.forProvider.tags
+#                 policy:
+#                   fromFieldPath: Optional
+#                   toFieldPath: MergeObjects
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.tags.ClusterName
+#                 policy:
+#                   fromFieldPath: Required
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.environment
+#                 toFieldPath: spec.forProvider.tags.Environment
+#                 policy:
+#                   fromFieldPath: Optional
+
+#         resources:
+#           - name: cluster-role
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "%s-cluster-role"
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "%s-cluster-role"
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.arn
+#                 toFieldPath: status.clusterRoleArn
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: cluster-role
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "eks.amazonaws.com"
+#                           },
+#                           "Action": "sts:AssumeRole"
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           - name: cluster-policy-attachment
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.roleSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster-role"
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: cluster-policy
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster-role
+#                 deletionPolicy: Delete
+
+  
+#           - name: cluster-vpc-policy-attachment
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.roleSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster-role"
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: cluster-vpc-policy
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster-role
+#                 deletionPolicy: Delete
+
+#           # EKS Cluster Resource (Task 10)
+#           # Main EKS cluster control plane
+#           - name: eks-cluster
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.name
+#               # Cluster version
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterVersion
+#                 toFieldPath: spec.forProvider.version
+#               # VPC configuration
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.vpcConfig.subnetIds
+#                 toFieldPath: spec.forProvider.vpcConfig[0].subnetIds
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.vpcConfig.clusterEndpointPublicAccess
+#                 toFieldPath: spec.forProvider.vpcConfig[0].endpointPublicAccess
+#               # Cluster upgrade policy
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterUpgradePolicy.supportType
+#                 toFieldPath: spec.forProvider.upgradePolicy[0].supportType
+#                 policy:
+#                   fromFieldPath: Optional
+#               # IRSA and Authentication Configuration (Task 11)
+#               # Authentication mode (API or API_AND_CONFIG_MAP)
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.authenticationMode
+#                 toFieldPath: spec.forProvider.accessConfig[0].authenticationMode
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Enable cluster creator admin permissions
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.enableClusterCreatorAdminPermissions
+#                 toFieldPath: spec.forProvider.accessConfig[0].bootstrapClusterCreatorAdminPermissions
+#                 policy:
+#                   fromFieldPath: Optional
+#               # IAM role reference using selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.roleArnSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster-role"
+#               # Status patches - expose cluster details to composite (Tasks 43-45)
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.arn
+#                 toFieldPath: status.clusterArn
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.endpoint
+#                 toFieldPath: status.clusterEndpoint
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+#                 toFieldPath: status.oidcIssuerUrl
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.certificateAuthority[0].data
+#                 toFieldPath: status.certificateAuthorityData
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.vpcConfig[0].clusterSecurityGroupId
+#                 toFieldPath: status.clusterSecurityGroupId
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Connection secret patches
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.writeConnectionSecretToRef.name
+#                 toFieldPath: spec.writeConnectionSecretToRef.name
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.writeConnectionSecretToRef.namespace
+#                 toFieldPath: spec.writeConnectionSecretToRef.namespace
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Cluster
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: cluster
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   roleArnSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster-role
+#                   vpcConfig:
+#                     - endpointPrivateAccess: true
+#                       endpointPublicAccess: false
+#                   accessConfig:
+#                     - authenticationMode: API
+#                       bootstrapClusterCreatorAdminPermissions: true
+#                   upgradePolicy:
+#                     - supportType: STANDARD
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             connectionDetails:
+#               - type: FromFieldPath
+#                 name: endpoint
+#                 fromFieldPath: status.atProvider.endpoint
+#               - type: FromFieldPath
+#                 name: ca-certificate-authority-data
+#                 fromFieldPath: status.atProvider.certificateAuthority[0].data
+#               - type: FromFieldPath
+#                 name: oidc-issuer-url
+#                 fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+#               - type: FromCompositeFieldPath
+#                 name: cluster-name
+#                 fromFieldPath: spec.parameters.clusterName
+#               - type: FromCompositeFieldPath
+#                 name: region
+#                 fromFieldPath: spec.parameters.region
+
+#           # Node IAM Role (Task 12)
+#           # IAM role for EKS node groups (EC2 instances)
+#           - name: node-role
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "%s-node-role"
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "%s-node-role"
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.arn
+#                 toFieldPath: status.nodeRoleArn
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: node-role
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "ec2.amazonaws.com"
+#                           },
+#                           "Action": "sts:AssumeRole"
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           # Node IAM Policy Attachments (Task 13)
+#           # Attach AmazonEKSWorkerNodePolicy to node role
+#           - name: node-worker-policy-attachment
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: node-worker-policy
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: node-role
+#                 deletionPolicy: Delete
+
+#           # Attach AmazonEKS_CNI_Policy to node role
+#           - name: node-cni-policy-attachment
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: node-cni-policy
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: node-role
+#                 deletionPolicy: Delete
+
+#           # Attach AmazonEC2ContainerRegistryReadOnly to node role
+#           - name: node-ecr-policy-attachment
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: node-ecr-policy
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: node-role
+#                 deletionPolicy: Delete
+
+#           # Launch Template for Node Groups (Task 14)
+#           # Custom launch template for node group customization (EBS volumes, CloudInit, SSH keys)
+#           # NOTE: This is a template pattern - actual implementation will use function-go-templating
+#           # to create one launch template per node group in the nodeGroups array
+#           - name: node-launch-template-0
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Launch template name from cluster name + node group name
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                     - fromFieldPath: spec.parameters.nodeGroups[0].name
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-%s-lt"
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Block device mappings from node group configuration
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].deviceName
+#                 toFieldPath: spec.forProvider.blockDeviceMappings[0].deviceName
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].volumeSize
+#                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].volumeSize
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].volumeType
+#                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].volumeType
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].encrypted
+#                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].encrypted
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].deleteOnTermination
+#                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].deleteOnTermination
+#                 policy:
+#                   fromFieldPath: Optional
+#               # SSH key name
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].keyName
+#                 toFieldPath: spec.forProvider.keyName
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Tags from node group
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].tags
+#                 toFieldPath: spec.forProvider.tagSpecifications[0].tags
+#                 policy:
+#                   fromFieldPath: Optional
+#               # CloudInit userData for NodeAdm configuration (Task 18)
+#               # This creates a NodeAdm configuration for AL2023 with localStorage and kubelet settings
+#               # The userData is base64-encoded MIME multipart with NodeAdm YAML
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                     - fromFieldPath: spec.parameters.cloudInitConfig.localStorage.strategy
+#                     - fromFieldPath: spec.parameters.cloudInitConfig.kubelet.registryPullQPS
+#                   strategy: string
+#                   string:
+#                     fmt: |
+#                       MIME-Version: 1.0
+#                       Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+#                       --BOUNDARY
+#                       Content-Type: application/node.eks.aws
+
+#                       apiVersion: node.eks.aws/v1alpha1
+#                       kind: NodeConfig
+#                       spec:
+#                         cluster:
+#                           name: %s
+#                         instance:
+#                           localStorage:
+#                             strategy: %s
+#                         kubelet:
+#                           config:
+#                             registryPullQPS: %s
+
+#                       --BOUNDARY--
+#                 toFieldPath: spec.forProvider.userData
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Convert
+#                       convert: ToBase64
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: ec2.aws.upbound.io/v1beta1
+#               kind: LaunchTemplate
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: launch-template
+#                   portal-kombat.io/node-group-index: "0"
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   blockDeviceMappings:
+#                     - deviceName: /dev/xvda
+#                       ebs:
+#                         - volumeSize: 100
+#                           volumeType: gp3
+#                           encrypted: true
+#                           deleteOnTermination: true
+#                   tagSpecifications:
+#                     - resourceType: instance
+#                       tags:
+#                         ManagedBy: Crossplane
+#                     - resourceType: volume
+#                       tags:
+#                         ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: NonEmpty
+#                 fieldPath: status.atProvider.id
+#               - type: NonEmpty
+#                 fieldPath: status.atProvider.latestVersion
+
+#           # Managed Node Group (Task 15)
+#           # EKS managed node group for worker nodes
+#           # NOTE: This is a template pattern - actual implementation will use function-go-templating
+#           # to create one node group per entry in the nodeGroups array
+#           - name: node-group-0
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Node group name from cluster name + node group name
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                     - fromFieldPath: spec.parameters.nodeGroups[0].name
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-%s"
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                     - fromFieldPath: spec.parameters.nodeGroups[0].name
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-%s"
+#                 toFieldPath: spec.forProvider.nodeGroupName
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Cluster reference using selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Subnet IDs from VPC config
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.vpcConfig.subnetIds
+#                 toFieldPath: spec.forProvider.subnetIds
+#               # Node IAM role reference using selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.nodeRoleArnSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "node-role"
+#               # AMI type
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].amiType
+#                 toFieldPath: spec.forProvider.amiType
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Instance types (Task 16)
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].instanceTypes
+#                 toFieldPath: spec.forProvider.instanceTypes
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Scaling configuration (Task 16)
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].minSize
+#                 toFieldPath: spec.forProvider.scalingConfig[0].minSize
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].maxSize
+#                 toFieldPath: spec.forProvider.scalingConfig[0].maxSize
+#                 policy:
+#                   fromFieldPath: Optional
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].desiredSize
+#                 toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Labels
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].labels
+#                 toFieldPath: spec.forProvider.labels
+#                 policy:
+#                   fromFieldPath: Optional
+#                   toFieldPath: MergeObjects
+#               # Node group specific tags (Task 20)
+#               # Merge node group tags with standard tags
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].tags
+#                 toFieldPath: spec.forProvider.tags
+#                 policy:
+#                   fromFieldPath: Optional
+#                   toFieldPath: MergeObjects
+#               # Launch template reference - conditional based on useCustomLaunchTemplate
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].useCustomLaunchTemplate
+#                 toFieldPath: spec.forProvider.launchTemplate[0].id
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "placeholder-will-use-selector"
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Update configuration (Task 19)
+#               # Configure rolling update strategy for node group updates
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.nodeGroups[0].name
+#                 toFieldPath: spec.forProvider.updateConfig[0].maxUnavailable
+#                 transforms:
+#                   - type: convert
+#                     convert:
+#                       toType: int
+#                       format: "1"
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Status patches
+#               - type: ToCompositeFieldPath
+#                 fromFieldPath: status.atProvider.status
+#                 toFieldPath: status.nodeGroups[0].status
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: NodeGroup
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: node-group
+#                   portal-kombat.io/node-group-index: "0"
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   nodeRoleArnSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: node-role
+#                   scalingConfig:
+#                     - minSize: 1
+#                       maxSize: 4
+#                       desiredSize: 2
+#                   amiType: AL2023_x86_64_STANDARD
+#                   instanceTypes:
+#                     - t3.medium
+#                   updateConfig:
+#                     - maxUnavailable: 1
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # EKS Add-ons (Phase 5)
+#           # CoreDNS Add-on (Task 21)
+#           # DNS service for Kubernetes cluster
+#           - name: addon-coredns
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name reference via selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Most recent version flag
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.coredns.mostRecent
+#                 toFieldPath: spec.forProvider.mostRecent
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Preserve on update
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.coredns.preserve
+#                 toFieldPath: spec.forProvider.preserve
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Addon
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: addon
+#                   portal-kombat.io/addon-name: coredns
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   addonName: coredns
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   mostRecent: true
+#                   preserve: true
+#                   resolveConflictsOnCreate: OVERWRITE
+#                   resolveConflictsOnUpdate: PRESERVE
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # VPC-CNI Add-on (Task 22)
+#           # VPC networking for Kubernetes pods
+#           - name: addon-vpc-cni
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name reference via selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Most recent version flag
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.vpcCni.mostRecent
+#                 toFieldPath: spec.forProvider.mostRecent
+#                 policy:
+#                   fromFieldPath: Optional
+#               # VPC-CNI custom networking configuration via configurationValues
+#               # This will be populated with custom networking settings in later tasks
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Addon
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: addon
+#                   portal-kombat.io/addon-name: vpc-cni
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   addonName: vpc-cni
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   mostRecent: true
+#                   resolveConflictsOnCreate: OVERWRITE
+#                   resolveConflictsOnUpdate: PRESERVE
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # Kube-proxy Add-on (Task 23)
+#           # Network proxy running on each node
+#           - name: addon-kube-proxy
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name reference via selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Most recent version flag
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.kubeProxy.mostRecent
+#                 toFieldPath: spec.forProvider.mostRecent
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Addon
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: addon
+#                   portal-kombat.io/addon-name: kube-proxy
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   addonName: kube-proxy
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   mostRecent: true
+#                   resolveConflictsOnCreate: OVERWRITE
+#                   resolveConflictsOnUpdate: PRESERVE
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # Pod Identity Agent Add-on (Task 24)
+#           # Enables EKS Pod Identity for service accounts
+#           - name: addon-pod-identity-agent
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name reference via selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Most recent version flag
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.eksPodIdentityAgent.mostRecent
+#                 toFieldPath: spec.forProvider.mostRecent
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Addon
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: addon
+#                   portal-kombat.io/addon-name: eks-pod-identity-agent
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   addonName: eks-pod-identity-agent
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   mostRecent: true
+#                   resolveConflictsOnCreate: OVERWRITE
+#                   resolveConflictsOnUpdate: PRESERVE
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # EFS CSI Driver Add-on (Task 25)
+#           # Enables EFS file system support for persistent volumes
+#           - name: addon-efs-csi-driver
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: region
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Cluster name reference via selector
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.clusterNameSelector.matchLabels[portal-kombat.io/eks-component]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "cluster"
+#               # Most recent version flag
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.awsEfsCsiDriver.mostRecent
+#                 toFieldPath: spec.forProvider.mostRecent
+#                 policy:
+#                   fromFieldPath: Optional
+#               # Enabled flag - only create if explicitly enabled
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterAddons.awsEfsCsiDriver.enabled
+#                 toFieldPath: metadata.annotations[crossplane.io/external-name]
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: "aws-efs-csi-driver"
+#                 policy:
+#                   fromFieldPath: Optional
+#             base:
+#               apiVersion: eks.aws.upbound.io/v1beta1
+#               kind: Addon
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: addon
+#                   portal-kombat.io/addon-name: aws-efs-csi-driver
+#               spec:
+#                 forProvider:
+#                   region: us-east-2
+#                   addonName: aws-efs-csi-driver
+#                   clusterNameSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/eks-component: cluster
+#                   mostRecent: true
+#                   resolveConflictsOnCreate: OVERWRITE
+#                   resolveConflictsOnUpdate: PRESERVE
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+#             readinessChecks:
+#               - type: MatchString
+#                 fieldPath: status.atProvider.status
+#                 matchString: ACTIVE
+
+#           # Pod Identity IAM Role - Cluster Autoscaler (Task 28)
+#           # IAM role for cluster-autoscaler service account
+#           - name: pod-identity-role-cluster-autoscaler
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Role name: {cluster-name}-cluster-autoscaler (truncate to 37 chars)
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-cluster-autoscaler"
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: TrimPrefix
+#                       trim: ""
+#                       # Truncate to 37 characters
+#                   - type: string
+#                     string:
+#                       type: Regexp
+#                       regexp:
+#                         match: "^(.{0,37}).*"
+#                         group: 1
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-role
+#                   portal-kombat.io/pod-identity-role: cluster-autoscaler
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "pods.eks.amazonaws.com"
+#                           },
+#                           "Action": [
+#                             "sts:AssumeRole",
+#                             "sts:TagSession"
+#                           ]
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           # Pod Identity IAM Policy - Cluster Autoscaler (Task 29)
+#           # Inline policy for cluster-autoscaler permissions
+#           - name: pod-identity-policy-cluster-autoscaler
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               # Policy name
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-cluster-autoscaler-policy"
+#                 toFieldPath: spec.forProvider.name
+#               # Cluster name for policy resource condition
+#               - type: FromCompositeFieldPath
+#                 fromFieldPath: spec.parameters.clusterName
+#                 toFieldPath: spec.forProvider.policy
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: Format
+#                       fmt: |
+#                         {
+#                           "Version": "2012-10-17",
+#                           "Statement": [
+#                             {
+#                               "Effect": "Allow",
+#                               "Action": [
+#                                 "autoscaling:DescribeAutoScalingGroups",
+#                                 "autoscaling:DescribeAutoScalingInstances",
+#                                 "autoscaling:DescribeLaunchConfigurations",
+#                                 "autoscaling:DescribeScalingActivities",
+#                                 "autoscaling:DescribeTags",
+#                                 "ec2:DescribeImages",
+#                                 "ec2:DescribeInstanceTypes",
+#                                 "ec2:DescribeLaunchTemplateVersions",
+#                                 "ec2:GetInstanceTypesFromInstanceRequirements",
+#                                 "eks:DescribeNodegroup"
+#                               ],
+#                               "Resource": "*"
+#                             },
+#                             {
+#                               "Effect": "Allow",
+#                               "Action": [
+#                                 "autoscaling:SetDesiredCapacity",
+#                                 "autoscaling:TerminateInstanceInAutoScalingGroup"
+#                               ],
+#                               "Resource": "*",
+#                               "Condition": {
+#                                 "StringEquals": {
+#                                   "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/%s": "owned"
+#                                 }
+#                               }
+#                             }
+#                           ]
+#                         }
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicy
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-policy
+#               spec:
+#                 forProvider:
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/pod-identity-role: cluster-autoscaler
+#                 deletionPolicy: Delete
+
+#           # Pod Identity IAM Role - EFS CSI Driver (Task 30)
+#           # IAM role for EFS CSI driver service account
+#           - name: pod-identity-role-efs-csi
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Role name: {cluster-name}-efs-csi (truncate to 37 chars)
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-efs-csi"
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: TrimPrefix
+#                       trim: ""
+#                   - type: string
+#                     string:
+#                       type: Regexp
+#                       regexp:
+#                         match: "^(.{0,37}).*"
+#                         group: 1
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-role
+#                   portal-kombat.io/pod-identity-role: efs-csi
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "pods.eks.amazonaws.com"
+#                           },
+#                           "Action": [
+#                             "sts:AssumeRole",
+#                             "sts:TagSession"
+#                           ]
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           # EFS CSI Driver IAM Policy Attachment (Task 30)
+#           # Attach AWS managed policy for EFS CSI Driver
+#           - name: pod-identity-policy-attachment-efs-csi
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-policy-attachment
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/pod-identity-role: efs-csi
+#                 deletionPolicy: Delete
+
+#           # Pod Identity IAM Role - Load Balancer Controller (Task 31)
+#           # IAM role for AWS Load Balancer Controller service account
+#           - name: pod-identity-role-lb-controller
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Role name: {cluster-name}-lb-controller (truncate to 37 chars)
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-lb-controller"
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: TrimPrefix
+#                       trim: ""
+#                   - type: string
+#                     string:
+#                       type: Regexp
+#                       regexp:
+#                         match: "^(.{0,37}).*"
+#                         group: 1
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-role
+#                   portal-kombat.io/pod-identity-role: lb-controller
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "pods.eks.amazonaws.com"
+#                           },
+#                           "Action": [
+#                             "sts:AssumeRole",
+#                             "sts:TagSession"
+#                           ]
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           # Load Balancer Controller IAM Policy Attachment (Task 31)
+#           # Attach AWS managed policy for Load Balancer Controller
+#           - name: pod-identity-policy-attachment-lb-controller
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-policy-attachment
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/pod-identity-role: lb-controller
+#                 deletionPolicy: Delete
+
+#           # Pod Identity IAM Role - VPC-CNI (Task 32)
+#           # IAM role for VPC-CNI service account
+#           - name: pod-identity-role-vpc-cni
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#               - type: PatchSet
+#                 patchSetName: standard-tags
+#               # Role name: {cluster-name}-vpc-cni (truncate to 37 chars)
+#               - type: CombineFromComposite
+#                 combine:
+#                   variables:
+#                     - fromFieldPath: spec.parameters.clusterName
+#                   strategy: string
+#                   string:
+#                     fmt: "%s-vpc-cni"
+#                 toFieldPath: spec.forProvider.name
+#                 transforms:
+#                   - type: string
+#                     string:
+#                       type: TrimPrefix
+#                       trim: ""
+#                   - type: string
+#                     string:
+#                       type: Regexp
+#                       regexp:
+#                         match: "^(.{0,37}).*"
+#                         group: 1
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: Role
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-role
+#                   portal-kombat.io/pod-identity-role: vpc-cni
+#               spec:
+#                 forProvider:
+#                   assumeRolePolicy: |
+#                     {
+#                       "Version": "2012-10-17",
+#                       "Statement": [
+#                         {
+#                           "Effect": "Allow",
+#                           "Principal": {
+#                             "Service": "pods.eks.amazonaws.com"
+#                           },
+#                           "Action": [
+#                             "sts:AssumeRole",
+#                             "sts:TagSession"
+#                           ]
+#                         }
+#                       ]
+#                     }
+#                   tags:
+#                     ManagedBy: Crossplane
+#                 deletionPolicy: Delete
+
+#           # VPC-CNI IAM Policy Attachment (Task 32)
+#           # Attach AWS managed policy for VPC-CNI
+#           - name: pod-identity-policy-attachment-vpc-cni
+#             patches:
+#               - type: PatchSet
+#                 patchSetName: providerConfigRef
+#             base:
+#               apiVersion: iam.aws.upbound.io/v1beta1
+#               kind: RolePolicyAttachment
+#               metadata:
+#                 labels:
+#                   portal-kombat.io/eks-component: pod-identity-policy-attachment
+#               spec:
+#                 forProvider:
+#                   policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+#                   roleSelector:
+#                     matchControllerRef: true
+#                     matchLabels:
+#                       portal-kombat.io/pod-identity-role: vpc-cni
+#                 deletionPolicy: Delete
+
+#     # Phase 2: Go Templating for Dynamic Array Expansion
+#     # This step generates Launch Templates and Node Groups dynamically for each entry in nodeGroups array
+#     - step: go-templating
+#       functionRef:
+#         name: function-go-templating
+#       input:
+#         apiVersion: gotemplating.fn.crossplane.io/v1beta1
+#         kind: GoTemplate
+#         source: Inline
+#         inline:
+#           template: |
+#             {{ range $i, $nodeGroup := .observed.composite.resource.spec.parameters.nodeGroups }}
+#             ---
+#             # Launch Template for Node Group: {{ $nodeGroup.name }}
+#             apiVersion: ec2.aws.upbound.io/v1beta1
+#             kind: LaunchTemplate
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-{{ $nodeGroup.name }}-lt
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: node-launch-template-{{ $i }}
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}-lt
+#                 blockDeviceMappings:
+#                 {{ range $blockDevice := $nodeGroup.blockDeviceMappings }}
+#                 - deviceName: {{ $blockDevice.deviceName }}
+#                   ebs:
+#                     - volumeSize: {{ $blockDevice.volumeSize }}
+#                       volumeType: {{ $blockDevice.volumeType }}
+#                       encrypted: {{ $blockDevice.encrypted }}
+#                       deleteOnTermination: {{ $blockDevice.deleteOnTermination }}
+#                 {{ end }}
+#                 tagSpecifications:
+#                 - resourceType: instance
+#                   tags:
+#                     Name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}-node
+#                     {{ range $key, $value := $.observed.composite.resource.spec.parameters.tags }}
+#                     {{ $key }}: "{{ $value }}"
+#                     {{ end }}
+#                     {{ range $key, $value := $nodeGroup.tags }}
+#                     {{ $key }}: "{{ $value }}"
+#                     {{ end }}
+#                 - resourceType: volume
+#                   tags:
+#                     Name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}-volume
+#                     {{ range $key, $value := $.observed.composite.resource.spec.parameters.tags }}
+#                     {{ $key }}: "{{ $value }}"
+#                     {{ end }}
+#                 {{ if $.observed.composite.resource.spec.parameters.cloudInitConfig }}
+#                 userData: |
+#                   {{ `MIME-Version: 1.0` }}
+#                   {{ `Content-Type: multipart/mixed; boundary="BOUNDARY"` }}
+#                   {{ `` }}
+#                   {{ `--BOUNDARY` }}
+#                   {{ `Content-Type: application/node.eks.aws` }}
+#                   {{ `` }}
+#                   apiVersion: node.eks.aws/v1alpha1
+#                   kind: NodeConfig
+#                   spec:
+#                     cluster:
+#                       name: {{ $.observed.composite.resource.spec.parameters.clusterName }}
+#                     {{ if $.observed.composite.resource.spec.parameters.cloudInitConfig.localStorage }}
+#                     instance:
+#                       localStorage:
+#                         strategy: {{ $.observed.composite.resource.spec.parameters.cloudInitConfig.localStorage.strategy }}
+#                     {{ end }}
+#                     {{ if $.observed.composite.resource.spec.parameters.cloudInitConfig.kubelet }}
+#                     kubelet:
+#                       config:
+#                         registryPullQPS: {{ $.observed.composite.resource.spec.parameters.cloudInitConfig.kubelet.registryPullQPS }}
+#                     {{ end }}
+#                   {{ `` }}
+#                   {{ `--BOUNDARY--` }}
+#                 {{ end }}
+#             ---
+#             # Node Group: {{ $nodeGroup.name }}
+#             apiVersion: eks.aws.upbound.io/v1beta1
+#             kind: NodeGroup
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-{{ $nodeGroup.name }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: node-group-{{ $i }}
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 clusterName: {{ $.observed.composite.resource.spec.parameters.clusterName }}
+#                 nodeGroupName: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}
+#                 nodeRoleArnSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: node-role
+#                 subnetIds:
+#                 {{ range $.observed.composite.resource.spec.parameters.vpcConfig.subnetIds }}
+#                 - {{ . }}
+#                 {{ end }}
+#                 scalingConfig:
+#                 - minSize: {{ $nodeGroup.minSize }}
+#                   maxSize: {{ $nodeGroup.maxSize }}
+#                   desiredSize: {{ $nodeGroup.desiredSize }}
+#                 updateConfig:
+#                 - maxUnavailable: 1
+#                 amiType: {{ $nodeGroup.amiType | default "AL2023_x86_64_STANDARD" }}
+#                 instanceTypes:
+#                 {{ range $nodeGroup.instanceTypes }}
+#                 - {{ . }}
+#                 {{ end }}
+#                 {{ if $nodeGroup.keyName }}
+#                 remoteAccess:
+#                 - ec2SshKey: {{ $nodeGroup.keyName }}
+#                 {{ end }}
+#                 {{ if $nodeGroup.useCustomLaunchTemplate }}
+#                 launchTemplate:
+#                 - name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}-lt
+#                   version: $Latest
+#                 {{ end }}
+#                 {{ if $nodeGroup.labels }}
+#                 labels:
+#                   {{ range $key, $value := $nodeGroup.labels }}
+#                   {{ $key }}: "{{ $value }}"
+#                   {{ end }}
+#                 {{ end }}
+#                 tags:
+#                   Name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}
+#                   {{ range $key, $value := $.observed.composite.resource.spec.parameters.tags }}
+#                   {{ $key }}: "{{ $value }}"
+#                   {{ end }}
+#                   {{ range $key, $value := $nodeGroup.tags }}
+#                   {{ $key }}: "{{ $value }}"
+#                   {{ end }}
+#             {{ end }}
+
+#             {{ range $i, $assoc := .observed.composite.resource.spec.parameters.podIdentityAssociations }}
+#             ---
+#             # Pod Identity Association: {{ $assoc.roleKey }} for {{ $assoc.namespace }}/{{ $assoc.serviceAccount }}
+#             apiVersion: eks.aws.upbound.io/v1beta1
+#             kind: PodIdentityAssociation
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-{{ $assoc.roleKey }}-{{ $i }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: pod-identity-assoc-{{ $i }}
+#                 crossplane.io/external-name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $assoc.roleKey }}
+#               labels:
+#                 portal-kombat.io/eks-component: pod-identity-association
+#                 portal-kombat.io/pod-identity-key: {{ $assoc.roleKey }}
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 clusterNameSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: cluster
+#                 namespace: {{ $assoc.namespace }}
+#                 serviceAccount: {{ $assoc.serviceAccount }}
+#                 roleArnSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/pod-identity-role: {{ $assoc.roleKey }}
+#               deletionPolicy: Delete
+#               providerConfigRef:
+#                 name: default
+#             {{ end }}
+
+#             {{ range $i, $entry := .observed.composite.resource.spec.parameters.accessEntries }}
+#             ---
+#             # EKS Access Entry: {{ $entry.principalArn }}
+#             apiVersion: eks.aws.upbound.io/v1beta1
+#             kind: AccessEntry
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-access-{{ $i }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: access-entry-{{ $i }}
+#               labels:
+#                 portal-kombat.io/eks-component: access-entry
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 clusterNameSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: cluster
+#                 principalArn: {{ $entry.principalArn }}
+#                 {{ if $entry.kubernetesGroups }}
+#                 kubernetesGroups:
+#                 {{ range $group := $entry.kubernetesGroups }}
+#                 - {{ $group }}
+#                 {{ end }}
+#                 {{ end }}
+#                 type: STANDARD
+#               deletionPolicy: Delete
+#               providerConfigRef:
+#                 name: default
+#             {{ range $pi, $policy := $entry.policyAssociations }}
+#             ---
+#             # Access Policy Association: {{ $policy.policyArn }}
+#             apiVersion: eks.aws.upbound.io/v1beta1
+#             kind: AccessPolicyAssociation
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-policy-{{ $i }}-{{ $pi }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: access-policy-{{ $i }}-{{ $pi }}
+#               labels:
+#                 portal-kombat.io/eks-component: access-policy
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 clusterNameSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: cluster
+#                 principalArn: {{ $entry.principalArn }}
+#                 policyArn: {{ $policy.policyArn }}
+#                 accessScope:
+#                   - type: {{ $policy.accessScope.type }}
+#                     {{ if eq $policy.accessScope.type "namespace" }}
+#                     {{ if $policy.accessScope.namespaces }}
+#                     namespaces:
+#                     {{ range $ns := $policy.accessScope.namespaces }}
+#                     - {{ $ns }}
+#                     {{ end }}
+#                     {{ end }}
+#                     {{ end }}
+#               deletionPolicy: Delete
+#               providerConfigRef:
+#                 name: default
+#             {{ end }}
+#             {{ end }}
+
+#             {{ if .observed.composite.resource.spec.parameters.vpcCniConfig }}
+#             {{ if .observed.composite.resource.spec.parameters.vpcCniConfig.enableCustomNetworking }}
+#             {{ range $az, $config := .observed.composite.resource.spec.parameters.vpcCniConfig.eniConfigSubnets }}
+#             ---
+#             # ENIConfig for Availability Zone: {{ $az }}
+#             apiVersion: kubernetes.crossplane.io/v1alpha2
+#             kind: Object
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-eniconfig-{{ $az }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: eniconfig-{{ $az }}
+#               labels:
+#                 portal-kombat.io/eks-component: eniconfig
+#                 portal-kombat.io/availability-zone: {{ $az }}
+#             spec:
+#               providerConfigRef:
+#                 name: kubernetes-provider
+#               forProvider:
+#                 manifest:
+#                   apiVersion: crd.k8s.amazonaws.com/v1alpha1
+#                   kind: ENIConfig
+#                   metadata:
+#                     name: {{ $az }}
+#                   spec:
+#                     subnet: {{ $config.subnetId }}
+#                     {{ if $config.securityGroups }}
+#                     securityGroups:
+#                     {{ range $sg := $config.securityGroups }}
+#                     - {{ $sg }}
+#                     {{ end }}
+#                     {{ end }}
+#               readiness:
+#                 policy: SuccessfulCreate
+#             {{ end }}
+#             {{ end }}
+#             {{ end }}
+
+#             {{ range $i, $rule := .observed.composite.resource.spec.parameters.clusterSecurityGroupAdditionalRules }}
+#             ---
+#             # Cluster Security Group Rule: {{ $rule.description }}
+#             apiVersion: ec2.aws.upbound.io/v1beta1
+#             kind: SecurityGroupRule
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-cluster-sg-rule-{{ $i }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: cluster-sg-rule-{{ $i }}
+#               labels:
+#                 portal-kombat.io/eks-component: cluster-sg-rule
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 type: ingress
+#                 protocol: {{ $rule.protocol }}
+#                 fromPort: {{ $rule.fromPort }}
+#                 toPort: {{ $rule.toPort }}
+#                 {{ if $rule.cidrBlocks }}
+#                 cidrBlocks:
+#                 {{ range $cidr := $rule.cidrBlocks }}
+#                 - {{ $cidr }}
+#                 {{ end }}
+#                 {{ end }}
+#                 {{ if $rule.description }}
+#                 description: {{ $rule.description }}
+#                 {{ end }}
+#                 securityGroupIdSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: cluster
+#               deletionPolicy: Delete
+#               providerConfigRef:
+#                 name: default
+#             {{ end }}
+
+#             {{ range $i, $rule := .observed.composite.resource.spec.parameters.nodeSecurityGroupAdditionalRules }}
+#             ---
+#             # Node Security Group Rule: {{ $rule.description }}
+#             apiVersion: ec2.aws.upbound.io/v1beta1
+#             kind: SecurityGroupRule
+#             metadata:
+#               name: {{ $.observed.composite.resource.metadata.name }}-node-sg-rule-{{ $i }}
+#               annotations:
+#                 gotemplating.fn.crossplane.io/composition-resource-name: node-sg-rule-{{ $i }}
+#               labels:
+#                 portal-kombat.io/eks-component: node-sg-rule
+#             spec:
+#               forProvider:
+#                 region: {{ $.observed.composite.resource.spec.parameters.region }}
+#                 type: ingress
+#                 protocol: {{ $rule.protocol }}
+#                 fromPort: {{ $rule.fromPort }}
+#                 toPort: {{ $rule.toPort }}
+#                 {{ if $rule.cidrBlocks }}
+#                 cidrBlocks:
+#                 {{ range $cidr := $rule.cidrBlocks }}
+#                 - {{ $cidr }}
+#                 {{ end }}
+#                 {{ end }}
+#                 {{ if $rule.description }}
+#                 description: {{ $rule.description }}
+#                 {{ end }}
+#                 securityGroupIdSelector:
+#                   matchControllerRef: true
+#                   matchLabels:
+#                     portal-kombat.io/eks-component: node-group
+#               deletionPolicy: Delete
+#               providerConfigRef:
+#                 name: default
+#             {{ end }}
