@@ -178,9 +178,6 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.annotations[crossplane.io/external-name]
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
-                toFieldPath: spec.forProvider.name
               # Cluster version
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterVersion
@@ -433,11 +430,21 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].encrypted
                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].encrypted
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%t"
                 policy:
                   fromFieldPath: Optional
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.nodeGroups[0].blockDeviceMappings[0].deleteOnTermination
                 toFieldPath: spec.forProvider.blockDeviceMappings[0].ebs[0].deleteOnTermination
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%t"
                 policy:
                   fromFieldPath: Optional
               # SSH key name
@@ -546,17 +553,7 @@ spec:
                 toFieldPath: metadata.annotations[crossplane.io/external-name]
                 policy:
                   fromFieldPath: Optional
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.parameters.clusterName
-                    - fromFieldPath: spec.parameters.nodeGroups[0].name
-                  strategy: string
-                  string:
-                    fmt: "%s-%s"
-                toFieldPath: spec.forProvider.nodeGroupName
-                policy:
-                  fromFieldPath: Optional
+              # nodeGroupName removed - external-name annotation is used instead for v2.1.1
               # Cluster reference using selector
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterName
@@ -684,12 +681,6 @@ spec:
                     string:
                       type: Format
                       fmt: "cluster"
-              # Most recent version flag
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterAddons.coredns.mostRecent
-                toFieldPath: spec.forProvider.mostRecent
-                policy:
-                  fromFieldPath: Optional
               # Preserve on update
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterAddons.coredns.preserve
@@ -711,7 +702,6 @@ spec:
                     matchControllerRef: true
                     matchLabels:
                       portal-kombat.io/eks-component: cluster
-                  mostRecent: true
                   preserve: true
                   resolveConflictsOnCreate: OVERWRITE
                   resolveConflictsOnUpdate: PRESERVE
@@ -742,12 +732,6 @@ spec:
                     string:
                       type: Format
                       fmt: "cluster"
-              # Most recent version flag
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterAddons.vpcCni.mostRecent
-                toFieldPath: spec.forProvider.mostRecent
-                policy:
-                  fromFieldPath: Optional
               # VPC-CNI custom networking configuration via configurationValues
               # This will be populated with custom networking settings in later tasks
             base:
@@ -765,7 +749,6 @@ spec:
                     matchControllerRef: true
                     matchLabels:
                       portal-kombat.io/eks-component: cluster
-                  mostRecent: true
                   resolveConflictsOnCreate: OVERWRITE
                   resolveConflictsOnUpdate: PRESERVE
                   tags:
@@ -795,12 +778,6 @@ spec:
                     string:
                       type: Format
                       fmt: "cluster"
-              # Most recent version flag
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterAddons.kubeProxy.mostRecent
-                toFieldPath: spec.forProvider.mostRecent
-                policy:
-                  fromFieldPath: Optional
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
               kind: Addon
@@ -816,7 +793,6 @@ spec:
                     matchControllerRef: true
                     matchLabels:
                       portal-kombat.io/eks-component: cluster
-                  mostRecent: true
                   resolveConflictsOnCreate: OVERWRITE
                   resolveConflictsOnUpdate: PRESERVE
                   tags:
@@ -846,12 +822,6 @@ spec:
                     string:
                       type: Format
                       fmt: "cluster"
-              # Most recent version flag
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterAddons.eksPodIdentityAgent.mostRecent
-                toFieldPath: spec.forProvider.mostRecent
-                policy:
-                  fromFieldPath: Optional
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
               kind: Addon
@@ -867,7 +837,6 @@ spec:
                     matchControllerRef: true
                     matchLabels:
                       portal-kombat.io/eks-component: cluster
-                  mostRecent: true
                   resolveConflictsOnCreate: OVERWRITE
                   resolveConflictsOnUpdate: PRESERVE
                   tags:
@@ -897,12 +866,6 @@ spec:
                     string:
                       type: Format
                       fmt: "cluster"
-              # Most recent version flag
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterAddons.awsEfsCsiDriver.mostRecent
-                toFieldPath: spec.forProvider.mostRecent
-                policy:
-                  fromFieldPath: Optional
               # Enabled flag - only create if explicitly enabled
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterAddons.awsEfsCsiDriver.enabled
@@ -929,7 +892,6 @@ spec:
                     matchControllerRef: true
                     matchLabels:
                       portal-kombat.io/eks-component: cluster
-                  mostRecent: true
                   resolveConflictsOnCreate: OVERWRITE
                   resolveConflictsOnUpdate: PRESERVE
                   tags:
@@ -1339,8 +1301,8 @@ spec:
                   ebs:
                     - volumeSize: {{ $blockDevice.volumeSize }}
                       volumeType: {{ $blockDevice.volumeType }}
-                      encrypted: {{ $blockDevice.encrypted }}
-                      deleteOnTermination: {{ $blockDevice.deleteOnTermination }}
+                      encrypted: "{{ $blockDevice.encrypted }}"
+                      deleteOnTermination: "{{ $blockDevice.deleteOnTermination }}"
                 {{ end }}
                 tagSpecifications:
                 - resourceType: instance
@@ -1392,11 +1354,11 @@ spec:
               name: {{ $.observed.composite.resource.metadata.name }}-{{ $nodeGroup.name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: node-group-{{ $i }}
+                crossplane.io/external-name: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}
             spec:
               forProvider:
                 region: {{ $.observed.composite.resource.spec.parameters.region }}
                 clusterName: {{ $.observed.composite.resource.spec.parameters.clusterName }}
-                nodeGroupName: {{ $.observed.composite.resource.spec.parameters.clusterName }}-{{ $nodeGroup.name }}
                 nodeRoleArnSelector:
                   matchControllerRef: true
                   matchLabels:

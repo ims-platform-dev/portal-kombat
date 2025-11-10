@@ -1,0 +1,532 @@
+---
+# ==============================================================================
+# COMPREHENSIVE EKS CLUSTER EXAMPLE
+# ==============================================================================
+# This example demonstrates ALL available features of the Portal Kombat EKS
+# composition, showing the complete API surface based on the Terraform reference
+# implementation.
+#
+# This is intended as a reference guide and demonstrates:
+# - Full cluster configuration with private API access
+# - Custom node groups with launch templates and block devices
+# - CloudInit/NodeAdm configuration for AL2023
+# - All 5 managed add-ons (coredns, vpc-cni, kube-proxy, pod-identity, efs-csi)
+# - VPC-CNI custom networking for separate pod IP space
+# - Pod Identity IAM roles and associations
+# - EKS access entries for IAM principal authentication
+# - Custom security group rules
+# - Comprehensive resource tagging
+#
+# NOTE: This uses PLACEHOLDER/EXAMPLE values. Replace with your actual IDs.
+# ==============================================================================
+
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: EKSCluster
+metadata:
+  name: dev-app-cluster
+  namespace: default
+  labels:
+    environment: dev
+    managed-by: crossplane
+    portal-kombat.io/purpose: example
+spec:
+  # Optional: Store connection secrets (kubeconfig, endpoint, ca-cert) in a Secret
+  writeConnectionSecretToRef:
+    name: dev-app-cluster-connection
+
+  parameters:
+    # ==========================================================================
+    # CORE CLUSTER CONFIGURATION
+    # ==========================================================================
+    # Basic cluster identification and versioning
+
+    clusterName: dev-app-cluster
+    clusterVersion: "1.32"  # Kubernetes version
+    region: us-east-2
+
+    # ==========================================================================
+    # VPC AND NETWORK CONFIGURATION
+    # ==========================================================================
+    # Defines where the cluster control plane and nodes will run
+
+    vpcConfig:
+      # REQUIRED: Existing VPC where cluster will be deployed
+      vpcId: vpc-0a1b2c3d4e5f67890
+
+      # REQUIRED: Subnet IDs for control plane ENIs and node groups
+      # These are the "control plane" subnets (typically private subnets)
+      subnetIds:
+        - subnet-0111111111aaaaaaa  # us-east-2a private
+        - subnet-0222222222bbbbbbb  # us-east-2b private
+        - subnet-0333333333ccccccc  # us-east-2c private
+
+      # Cluster API endpoint accessibility
+      # false = private only (recommended for production)
+      # true = publicly accessible
+      clusterEndpointPublicAccess: false
+
+    # Private endpoint access is enabled by default (not configurable separately)
+    # This allows nodes in the VPC to communicate with the control plane
+
+    # ==========================================================================
+    # IAM AND AUTHENTICATION
+    # ==========================================================================
+
+    # Enable IRSA (IAM Roles for Service Accounts) via OIDC provider
+    # This allows Kubernetes pods to assume IAM roles securely
+    enableIrsa: true
+
+    # Authentication mode for the cluster
+    # - API: Use EKS access entries (modern, recommended)
+    # - API_AND_CONFIG_MAP: Use both access entries and aws-auth ConfigMap
+    authenticationMode: API
+
+    # Grant admin permissions to the IAM principal creating the cluster
+    # Useful for bootstrapping cluster access
+    enableClusterCreatorAdminPermissions: true
+
+    # ==========================================================================
+    # CLUSTER UPGRADE POLICY
+    # ==========================================================================
+    # Controls cluster support type for version upgrades
+
+    clusterUpgradePolicy:
+      # STANDARD: 14 months of support for each Kubernetes version
+      # EXTENDED: Extended support beyond standard (additional cost)
+      supportType: STANDARD
+
+    # ==========================================================================
+    # NODE GROUPS CONFIGURATION - PHASE 2: UNLIMITED NODE GROUPS
+    # ==========================================================================
+    # Phase 2 Enhancement: The composition now supports UNLIMITED node groups.
+    # Each node group gets its own dedicated launch template with independent:
+    # - Instance types and AMI configuration
+    # - Scaling parameters (min/max/desired)
+    # - EBS block device mappings (size, type, encryption)
+    # - Kubernetes node labels for workload targeting
+    # - AWS resource tags for cost tracking and organization
+    #
+    # This enables sophisticated workload isolation patterns:
+    # - Separate node groups for compute vs storage vs networking workloads
+    # - Different instance types optimized for specific use cases
+    # - Custom EBS configurations per workload type
+    # - Granular cost tracking via tags per node group
+    #
+    # Reference: terraform-to-crossplane-migration/ambra-uat-use2/node-groups.tf
+    # See examples of multi-node-group production clusters with distinct purposes.
+    # ==========================================================================
+
+    nodeGroups:
+      # ------------------------------------------------------------------------
+      # Node Group 1: "kube" - General Kubernetes workloads
+      # ------------------------------------------------------------------------
+      # Purpose: General-purpose compute for standard Kubernetes workloads
+      # Optimized for: API services, background jobs, web applications
+      - name: kube
+
+        # EC2 instance types (multiple options for flexibility)
+        instanceTypes:
+          - t3.large    # 2 vCPU, 8 GB RAM
+          - t3.xlarge   # 4 vCPU, 16 GB RAM
+
+        # Autoscaling configuration
+        minSize: 2      # Minimum nodes for high availability
+        maxSize: 10     # Maximum nodes for burst capacity
+        desiredSize: 3  # Initial desired node count
+
+        # Amazon Machine Image type
+        amiType: AL2023_x86_64_STANDARD
+
+        # SSH key for node access
+        keyName: deployer
+
+        # Enable custom launch template for block device configuration
+        useCustomLaunchTemplate: true
+
+        # Block device configuration (EBS volumes)
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            volumeSize: 100         # 100 GB root volume
+            volumeType: gp3         # General Purpose SSD v3
+            encrypted: true
+            deleteOnTermination: true
+
+        # Kubernetes labels for pod scheduling
+        labels:
+          nodegroup-type: kube
+          workload: general
+
+        # AWS resource tags
+        tags:
+          NodeGroup: kube
+          ManagedBy: Crossplane
+          Environment: dev
+          MigrationProject: MPE36510
+
+      # ------------------------------------------------------------------------
+      # Node Group 2: "storage" - Storage-intensive workloads with NVME
+      # ------------------------------------------------------------------------
+      # Purpose: Database workloads requiring high IOPS and local NVME storage
+      # Optimized for: PostgreSQL, MySQL, MongoDB, Elasticsearch
+      # Instance families: m5ad, r5ad (AMD with local NVME disks)
+      - name: storage
+
+        # EC2 instance types with local NVME storage
+        instanceTypes:
+          - m5ad.2xlarge   # 8 vCPU, 32 GB RAM, 2x300 GB NVME
+          - m5ad.4xlarge   # 16 vCPU, 64 GB RAM, 2x600 GB NVME
+
+        # Autoscaling configuration (smaller scale for databases)
+        minSize: 1      # Minimum nodes
+        maxSize: 5      # Maximum nodes
+        desiredSize: 2  # Initial desired node count
+
+        # Amazon Machine Image type
+        amiType: AL2023_x86_64_STANDARD
+
+        # SSH key for node access
+        keyName: deployer
+
+        # Enable custom launch template for block device configuration
+        useCustomLaunchTemplate: true
+
+        # Block device configuration (larger root volume for database files)
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            volumeSize: 200         # 200 GB root volume
+            volumeType: gp3         # General Purpose SSD v3
+            encrypted: true
+            deleteOnTermination: true
+
+        # Kubernetes labels for pod scheduling
+        labels:
+          nodegroup-type: storage
+          workload: database
+
+        # AWS resource tags
+        tags:
+          NodeGroup: storage
+          ManagedBy: Crossplane
+          Environment: dev
+          MigrationProject: MPE36510
+
+      # ------------------------------------------------------------------------
+      # Node Group 3: "services" - Application services
+      # ------------------------------------------------------------------------
+      # Purpose: Microservices and application-tier workloads
+      # Optimized for: REST APIs, gRPC services, message queues
+      - name: services
+
+        # EC2 instance types (AMD-powered for cost efficiency)
+        instanceTypes:
+          - m6a.xlarge    # 4 vCPU, 16 GB RAM
+          - m6a.2xlarge   # 8 vCPU, 32 GB RAM
+
+        # Autoscaling configuration
+        minSize: 2      # Minimum nodes for high availability
+        maxSize: 8      # Maximum nodes for burst capacity
+        desiredSize: 4  # Initial desired node count
+
+        # Amazon Machine Image type
+        amiType: AL2023_x86_64_STANDARD
+
+        # SSH key for node access
+        keyName: deployer
+
+        # Enable custom launch template for block device configuration
+        useCustomLaunchTemplate: true
+
+        # Block device configuration (medium-sized root volume)
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            volumeSize: 150         # 150 GB root volume
+            volumeType: gp3         # General Purpose SSD v3
+            encrypted: true
+            deleteOnTermination: true
+
+        # Kubernetes labels for pod scheduling
+        labels:
+          nodegroup-type: services
+          workload: applications
+
+        # AWS resource tags
+        tags:
+          NodeGroup: services
+          ManagedBy: Crossplane
+          Environment: dev
+          MigrationProject: MPE36392
+
+    # ==========================================================================
+    # CLOUDINIT / NODEADM CONFIGURATION (AL2023)
+    # ==========================================================================
+    # NodeAdm is the AL2023 node configuration system (replaces cloud-init)
+    # Reference: https://awslabs.github.io/amazon-eks-ami/nodeadm/doc/api/
+
+    cloudInitConfig:
+      # Local storage configuration for instance types with NVME disks
+      # Examples: m5ad, r5ad, i3, i3en family instances
+      localStorage:
+        # RAID0: Combine all local NVME disks into striped volume (max performance)
+        # MOUNT: Mount each disk separately
+        strategy: RAID0
+
+      # Kubelet-specific configuration
+      kubelet:
+        # Registry pull QPS limits concurrent image pulls
+        # Higher values = faster pod startup, but more registry pressure
+        # Range: 1-100, Default: 5, Recommended: 50 for production
+        registryPullQPS: 50
+
+    # ==========================================================================
+    # EKS MANAGED ADD-ONS CONFIGURATION
+    # ==========================================================================
+    # AWS-managed cluster add-ons with automatic updates and patching
+    # These are essential cluster components managed by AWS
+
+    clusterAddons:
+      # CoreDNS: DNS service for Kubernetes cluster
+      coredns:
+        enabled: true
+        mostRecent: true  # Use latest compatible version
+        preserve: true    # Preserve existing configuration on updates
+        timeouts:
+          create: "25m"   # Allow 25 minutes for installation
+          delete: "10m"
+
+      # VPC-CNI: Kubernetes networking plugin for AWS VPC
+      # Provides pod IP addressing from VPC subnets
+      vpcCni:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true  # Install before node groups (required)
+
+      # Kube-proxy: Network proxy running on each node
+      kubeProxy:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true
+
+      # EKS Pod Identity Agent: Enables EKS Pod Identity for IAM roles
+      # Modern replacement for IRSA (both can coexist)
+      eksPodIdentityAgent:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true
+
+      # AWS EFS CSI Driver: Allows mounting EFS file systems in pods
+      # Required for shared persistent storage
+      awsEfsCsiDriver:
+        enabled: true
+        mostRecent: true
+
+    # ==========================================================================
+    # VPC-CNI CUSTOM NETWORKING CONFIGURATION
+    # ==========================================================================
+    # Custom networking allows pods to use different subnets than nodes
+    # Use case: Conserve IP space in node subnets by using separate pod subnets
+    # Reference: https://docs.aws.amazon.com/eks/latest/userguide/cni-custom-network.html
+
+    vpcCniConfig:
+      # Enable custom networking mode
+      enableCustomNetworking: true
+
+      # Label used to match ENIConfig to nodes
+      # Default: topology.kubernetes.io/zone (matches by AZ)
+      eniConfigLabelDef: "topology.kubernetes.io/zone"
+
+      # ENIConfig subnet configuration per availability zone
+      # These are the "pod" subnets (separate from node subnets)
+      eniConfigSubnets:
+        us-east-2a:
+          subnetId: subnet-0aaa11111111aaaaa  # Pod subnet in AZ-a
+          securityGroups:
+            - sg-0a1b2c3d4e5f67890  # Typically cluster primary SG
+        us-east-2b:
+          subnetId: subnet-0bbb22222222bbbbb  # Pod subnet in AZ-b
+          securityGroups:
+            - sg-0a1b2c3d4e5f67890
+        us-east-2c:
+          subnetId: subnet-0ccc33333333ccccc  # Pod subnet in AZ-c
+          securityGroups:
+            - sg-0a1b2c3d4e5f67890
+
+    # ==========================================================================
+    # POD IDENTITY IAM ROLES
+    # ==========================================================================
+    # Define IAM roles for EKS Pod Identity (modern IRSA alternative)
+    # Each role grants specific AWS permissions to Kubernetes workloads
+    # Reference: Terraform eks-pi-associations.tf
+
+    podIdentityRoles:
+      # Cluster Autoscaler: Scales node groups based on pod scheduling needs
+      - key: cluster-autoscaler
+        attachClusterAutoscalerPolicy: true
+        # Note: clusterAutoscalerClusterNames is automatically set to clusterName
+
+      # EFS CSI Driver: Manages EFS volume lifecycle
+      - key: efs-csi
+        attachAwsEfsCsiPolicy: true
+
+      # AWS Load Balancer Controller: Manages ALB/NLB for Ingress/Service
+      - key: lb-controller
+        attachAwsLbControllerPolicy: true
+
+      # VPC-CNI: AWS networking plugin (requires IAM for IP management)
+      - key: vpc-cni
+        attachAwsVpcCniPolicy: true
+        awsVpcCniEnableIpv4: true
+
+    # ==========================================================================
+    # POD IDENTITY ASSOCIATIONS
+    # ==========================================================================
+    # Map Kubernetes ServiceAccounts to IAM roles created above
+    # These create the actual bindings that allow pods to assume IAM roles
+
+    podIdentityAssociations:
+      # Cluster Autoscaler ServiceAccount → IAM Role
+      - namespace: kube-system
+        serviceAccount: cluster-autoscaler
+        roleKey: cluster-autoscaler
+
+      # EFS CSI Node Driver ServiceAccount → IAM Role
+      - namespace: kube-system
+        serviceAccount: efs-csi-node-sa
+        roleKey: efs-csi
+
+      # AWS Load Balancer Controller ServiceAccount → IAM Role
+      - namespace: kube-system
+        serviceAccount: aws-load-balancer-controller
+        roleKey: lb-controller
+
+      # VPC-CNI Plugin ServiceAccount → IAM Role
+      # Note: The VPC-CNI addon automatically creates association for "aws-node" SA
+      # This is redundant but shown for completeness
+      # - namespace: kube-system
+      #   serviceAccount: aws-node
+      #   roleKey: vpc-cni
+
+    # ==========================================================================
+    # EKS ACCESS ENTRIES
+    # ==========================================================================
+    # Grant IAM principals (users/roles) access to the cluster
+    # Replaces the deprecated aws-auth ConfigMap approach
+    # Reference: Terraform access.tf
+
+    accessEntries:
+      # Platform Admin Team - Full cluster admin access
+      - principalArn: arn:aws:iam::123456789012:role/PlatformAdminRole
+        kubernetesGroups:
+          - system:masters  # Kubernetes built-in admin group
+        policyAssociations:
+          - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+            accessScope:
+              type: cluster  # Cluster-wide access
+
+      # Development Team - Admin access (but not cluster admin)
+      - principalArn: arn:aws:iam::123456789012:role/DevelopmentTeamRole
+        kubernetesGroups:
+          - developers
+        policyAssociations:
+          - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy
+            accessScope:
+              type: cluster
+
+      # QA Team - Read-only access to specific namespaces
+      - principalArn: arn:aws:iam::123456789012:role/QATeamRole
+        kubernetesGroups:
+          - qa-viewers
+        policyAssociations:
+          - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy
+            accessScope:
+              type: namespace
+              namespaces:
+                - qa
+                - staging
+
+    # ==========================================================================
+    # SECURITY GROUP RULES
+    # ==========================================================================
+    # Additional security group rules for cluster and node security groups
+    # Reference: Terraform main.tf lines 125-180
+
+    # Cluster Security Group: Controls access to Kubernetes API server
+    clusterSecurityGroupAdditionalRules:
+      # Allow API access from anywhere (common for private clusters with VPN/TGW)
+      - description: EKS Cluster Private API Access
+        protocol: tcp
+        fromPort: 443
+        toPort: 443
+        cidrBlocks:
+          - 0.0.0.0/0
+
+    # Node Security Group: Controls node-to-node and external access to nodes
+    nodeSecurityGroupAdditionalRules:
+      # Allow Metrics Server to scrape kubelet metrics
+      - description: Allow metrics-server to poll nodes
+        protocol: tcp
+        fromPort: 10250
+        toPort: 10250
+        cidrBlocks:
+          - 198.18.0.0/16  # Metrics server VPC CIDR
+
+      # Allow SSH access from private networks
+      - description: Allow private SSH
+        protocol: tcp
+        fromPort: 22
+        toPort: 22
+        cidrBlocks:
+          - 10.0.0.0/8      # RFC 1918 Class A
+          - 172.16.0.0/12   # RFC 1918 Class B
+
+      # Allow Prometheus to scrape node exporter
+      - description: Allow prometheus to scrape node exporters
+        protocol: tcp
+        fromPort: 9100
+        toPort: 9100
+        cidrBlocks:
+          - 198.18.0.0/16  # Prometheus VPC CIDR
+
+    # ==========================================================================
+    # RESOURCE TAGGING
+    # ==========================================================================
+    # AWS tags applied to ALL cluster resources (cluster, nodes, SGs, etc.)
+    # Used for cost allocation, automation, and resource organization
+
+    tags:
+      Environment: dev
+      ManagedBy: Crossplane
+      Project: portal-kombat
+      Owner: platform-team
+      CostCenter: engineering
+      Terraform: "false"  # Managed by Crossplane, not Terraform
+      GitOpsRepo: portal-kombat
+      ClusterPurpose: application-workloads
+
+# ==============================================================================
+# USAGE NOTES
+# ==============================================================================
+# 1. Replace ALL placeholder IDs (vpc-xxx, subnet-xxx, sg-xxx, IAM ARNs)
+# 2. Adjust instance types and sizes based on workload requirements
+# 3. Review security group rules for your network architecture
+# 4. This example demonstrates THREE node groups with different purposes:
+#    - "kube": General workloads with t3 instances
+#    - "storage": Database workloads with NVME-backed instances (m5ad)
+#    - "services": Application services with AMD instances (m6a)
+# 5. Each node group has independent scaling, EBS config, labels, and tags
+# 6. Review pod identity roles - only create what you need
+# 7. Access entries should match your IAM structure
+# 8. VPC-CNI custom networking is optional but recommended for IP conservation
+# 9. Connection secret contains: kubeconfig, endpoint, ca-cert, oidc-issuer
+#
+# To deploy:
+#   kubectl apply -f eks-cluster-comprehensive.yaml
+#
+# To get kubeconfig:
+#   kubectl get secret dev-app-cluster-connection -n default -o jsonpath='{.data.kubeconfig}' | base64 -d > kubeconfig
+#   export KUBECONFIG=./kubeconfig
+#
+# To schedule pods to specific node groups:
+#   nodeSelector:
+#     nodegroup-type: storage  # Targets storage node group
+#     workload: database       # Targets database workloads
+# ==============================================================================

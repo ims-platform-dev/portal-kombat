@@ -1,0 +1,19 @@
+---
+# UPJET AWS EFS Provider
+# Required for EFS File System integration with EKS clusters
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-upjet-aws-efs
+  labels:
+    portal-kombat.io/provider-family: aws
+    portal-kombat.io/provider-service: efs
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-efs:v1.7.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+  runtimeConfigRef:
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: DeploymentRuntimeConfig
+    name: aws-upbound-runtime-config

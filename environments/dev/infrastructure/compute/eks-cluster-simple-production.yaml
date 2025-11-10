@@ -63,7 +63,7 @@ spec:
     # ==========================================================================
     vpcConfig:
       # Production VPC
-      vpcId: vpc-0f47efaeda5740a9b
+      vpcId: 	vpc-0f47efaeda5740a9b
 
       # Private subnets across multiple AZs for high availability
       subnetIds:
