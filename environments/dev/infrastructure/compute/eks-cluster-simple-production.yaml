@@ -1,0 +1,355 @@
+---
+# ==============================================================================
+# SIMPLE PRODUCTION EKS CLUSTER EXAMPLE
+# ==============================================================================
+# This example demonstrates a straightforward production-ready EKS cluster using
+# Portal Kombat's EKS composition. It provides a balance between simplicity and
+# production requirements without the complexity of advanced features.
+#
+# Features included:
+# - Production Kubernetes version (1.32)
+# - Private API endpoint (secure by default)
+# - Single node group with autoscaling
+# - Essential cluster add-ons (coredns, vpc-cni, kube-proxy, pod-identity)
+# - Cluster Autoscaler with Pod Identity
+# - IRSA enabled for service account authentication
+# - Production-appropriate instance types and sizing
+# - Encrypted EBS volumes
+# - Resource tagging
+#
+# Features NOT included (see eks-cluster-comprehensive.yaml for these):
+# - Multiple node groups
+# - VPC-CNI custom networking
+# - EFS CSI driver
+# - Additional access entries
+# - Custom security group rules
+# - Advanced monitoring configurations
+#
+# This configuration is suitable for:
+# - Standard production workloads
+# - Teams wanting simple, maintainable infrastructure
+# - Production environments without complex networking requirements
+# - Projects that need autoscaling but not multi-tenant isolation
+# ==============================================================================
+
+apiVersion: aws.plt.intelerad.io/v1alpha1
+kind: EKSCluster
+metadata:
+  name: simple-prod-cluster
+  namespace: default
+  labels:
+    environment: production
+    managed-by: crossplane
+spec:
+  # ==========================================================================
+  # CONNECTION SECRET
+  # ==========================================================================
+  # Store cluster connection details for kubectl access
+  writeConnectionSecretToRef:
+    name: simple-prod-cluster-connection
+
+  parameters:
+    providerConfig: infrastructure-dev
+
+    # ==========================================================================
+    # CORE CLUSTER CONFIGURATION
+    # ==========================================================================
+    clusterName: simple-prod-cluster
+    clusterVersion: "1.34"
+    region: us-east-2
+
+    # ==========================================================================
+    # VPC AND NETWORK CONFIGURATION
+    # ==========================================================================
+    vpcConfig:
+      # Production VPC
+      vpcId: vpc-0f47efaeda5740a9b
+
+      # Private subnets across multiple AZs for high availability
+      subnetIds:
+        - subnet-014d13b7dbdd5cd0d  # Private subnet AZ-a
+        - subnet-0fac91f2d389a7121  # Private subnet AZ-b
+        - subnet-07ee5bbdf9946a991  # Private subnet AZ-c
+
+      # Private API only - recommended for production security
+      clusterEndpointPublicAccess: false
+
+    # ==========================================================================
+    # AUTHENTICATION AND ACCESS
+    # ==========================================================================
+    # Enable IRSA for pod-level IAM permissions
+    enableIrsa: true
+
+    # Use modern API-based authentication (recommended)
+    authenticationMode: API
+
+    # Grant cluster creator admin permissions automatically
+    enableClusterCreatorAdminPermissions: true
+
+    # ==========================================================================
+    # CLUSTER UPGRADE POLICY
+    # ==========================================================================
+    clusterUpgradePolicy:
+      # STANDARD = 14 months support per version
+      # EXTENDED = 18 months support per version (additional cost)
+      supportType: STANDARD
+
+    # ==========================================================================
+    # NODE GROUP CONFIGURATION
+    # ==========================================================================
+    nodeGroups:
+      - name: production-nodes
+        # Multiple instance types for flexibility and cost optimization
+        instanceTypes:
+          - m6a.large    # 2 vCPU, 8 GB RAM
+          - m6a.xlarge   # 4 vCPU, 16 GB RAM
+
+        # Autoscaling configuration
+        minSize: 3        # Minimum for HA across 3 AZs
+        maxSize: 15       # Allow scaling for traffic spikes
+        desiredSize: 6    # Start with 6 nodes (2 per AZ)
+
+        # Latest EKS-optimized Amazon Linux 2023
+        amiType: AL2023_x86_64_STANDARD
+
+        # SSH key for emergency node access (replace with your key name)
+        # Comment out if you don't need SSH access
+        keyName: ops-team-key
+
+        # Enable custom launch template for advanced configuration
+        useCustomLaunchTemplate: true
+
+        # Block device configuration
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            volumeSize: 80          # 80 GB root volume
+            volumeType: gp3         # gp3 for better performance/cost
+            encrypted: true         # Always encrypt in production
+            deleteOnTermination: true
+
+        # Node labels for workload scheduling
+        labels:
+          environment: production
+          workload-type: general
+          node-class: standard
+
+        # Tags for cost allocation and management
+        tags:
+          Environment: production
+          ManagedBy: Crossplane
+          NodeGroup: production-nodes
+
+    # ==========================================================================
+    # CLOUDINIT CONFIGURATION
+    # ==========================================================================
+    # Optimized cloud-init settings for production nodes
+    cloudInitConfig:
+      localStorage:
+        strategy: RAID0  # Configure instance store as RAID0 if available
+      kubelet:
+        registryPullQPS: 50  # Higher pull rate for production workloads
+
+    # ==========================================================================
+    # EKS MANAGED ADD-ONS
+    # ==========================================================================
+    # Essential cluster add-ons with production settings
+    clusterAddons:
+      coredns:
+        enabled: true
+        mostRecent: true      # Use latest compatible version
+        preserve: true        # Preserve existing configuration on updates
+        timeouts:
+          create: "25m"
+          delete: "10m"
+
+      vpcCni:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true   # Install before nodes start
+
+      kubeProxy:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true
+
+      eksPodIdentityAgent:
+        enabled: true
+        mostRecent: true
+        beforeCompute: true
+
+      # EFS CSI Driver - DISABLED by default
+      # Uncomment to enable shared storage capability
+      # awsEfsCsiDriver:
+      #   enabled: true
+      #   mostRecent: true
+
+    # ==========================================================================
+    # POD IDENTITY IAM ROLES
+    # ==========================================================================
+    # IAM roles for cluster services using EKS Pod Identity
+    podIdentityRoles:
+      # Cluster Autoscaler - essential for production autoscaling
+      - key: cluster-autoscaler
+        attachClusterAutoscalerPolicy: true
+
+      # Uncomment to enable AWS Load Balancer Controller
+      # - key: lb-controller
+      #   attachAwsLbControllerPolicy: true
+
+      # Uncomment if you enable EFS CSI driver
+      # - key: efs-csi
+      #   attachAwsEfsCsiPolicy: true
+
+    # ==========================================================================
+    # POD IDENTITY ASSOCIATIONS
+    # ==========================================================================
+    # Map Kubernetes ServiceAccounts to IAM roles
+    podIdentityAssociations:
+      # Cluster Autoscaler association
+      - namespace: kube-system
+        serviceAccount: cluster-autoscaler
+        roleKey: cluster-autoscaler
+
+      # Uncomment if you enable AWS Load Balancer Controller
+      # - namespace: kube-system
+      #   serviceAccount: aws-load-balancer-controller
+      #   roleKey: lb-controller
+
+      # Uncomment if you enable EFS CSI driver
+      # - namespace: kube-system
+      #   serviceAccount: efs-csi-node-sa
+      #   roleKey: efs-csi
+
+    # ==========================================================================
+    # RESOURCE TAGGING
+    # ==========================================================================
+    # Tags applied to all cluster resources for governance
+    tags:
+      Environment: production
+      ManagedBy: Crossplane
+      Project: portal-kombat
+      Owner: platform-team
+      CostCenter: engineering
+
+# ==============================================================================
+# DEPLOYMENT INSTRUCTIONS
+# ==============================================================================
+# 1. Update placeholder values:
+#    - vpcId: Your production VPC ID (vpc-xxx)
+#    - subnetIds: Your private subnet IDs across 3 AZs (subnet-xxx)
+#    - keyName: Your EC2 key pair name (or remove if SSH not needed)
+#    - tags: Update Owner, Project, CostCenter as appropriate
+#
+# 2. Validate the configuration (optional but recommended):
+#    crossplane beta validate \
+#      infra-definitions/xrds/compute/xrd-eks-cluster.yaml,\
+#      infra-definitions/compositions/compute/eks-production.yaml \
+#      examples/compute/eks-cluster-simple-production.yaml
+#
+# 3. Apply the cluster:
+#    kubectl apply -f examples/compute/eks-cluster-simple-production.yaml
+#
+# 4. Monitor cluster creation (typically 15-20 minutes):
+#    kubectl get ekscluster simple-prod-cluster -w
+#
+#    # Check detailed status
+#    kubectl describe ekscluster simple-prod-cluster
+#
+# 5. Wait for cluster to be ready:
+#    kubectl wait --for=condition=Ready \
+#      ekscluster/simple-prod-cluster --timeout=25m
+#
+# 6. Extract kubeconfig when ready:
+#    kubectl get secret simple-prod-cluster-connection -n default \
+#      -o jsonpath='{.data.kubeconfig}' | base64 -d > simple-prod-kubeconfig
+#
+# 7. Access the cluster:
+#    export KUBECONFIG=./simple-prod-kubeconfig
+#    kubectl get nodes
+#    kubectl get pods -A
+#
+#    # Verify node labels
+#    kubectl get nodes -L environment,workload-type,node-class
+#
+# ==============================================================================
+# POST-DEPLOYMENT STEPS
+# ==============================================================================
+# 1. Install Cluster Autoscaler (if enabled Pod Identity role):
+#    helm repo add autoscaler https://kubernetes.github.io/autoscaler
+#    helm install cluster-autoscaler autoscaler/cluster-autoscaler \
+#      --namespace kube-system \
+#      --set autoDiscovery.clusterName=simple-prod-cluster \
+#      --set awsRegion=us-east-2 \
+#      --set rbac.serviceAccount.name=cluster-autoscaler \
+#      --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="<role-arn>"
+#
+# 2. Verify cluster autoscaler is working:
+#    kubectl logs -n kube-system deployment/cluster-autoscaler
+#
+# 3. Deploy your applications:
+#    kubectl create namespace production
+#    kubectl apply -f your-application.yaml
+#
+# ==============================================================================
+# TROUBLESHOOTING
+# ==============================================================================
+# 1. Check cluster status:
+#    kubectl get ekscluster simple-prod-cluster -o yaml
+#
+# 2. Check for errors in events:
+#    kubectl describe ekscluster simple-prod-cluster
+#
+# 3. View Crossplane logs:
+#    kubectl logs -n crossplane-system deployment/crossplane
+#
+# 4. Check provider logs:
+#    kubectl logs -n crossplane-system deployment/provider-aws-eks
+#
+# 5. Verify IAM roles were created:
+#    aws iam list-roles | grep simple-prod-cluster
+#
+# 6. Check node group status:
+#    aws eks describe-nodegroup \
+#      --cluster-name simple-prod-cluster \
+#      --nodegroup-name simple-prod-cluster-production-nodes-0
+#
+# For detailed troubleshooting guide, see:
+#   /docs/eks-composition-troubleshooting.md
+# ==============================================================================
+
+# ==============================================================================
+# EXPECTED RESOURCES CREATED
+# ==============================================================================
+# This claim will create:
+# - 1 EKS Cluster (simple-prod-cluster)
+# - 1 Node Group (production-nodes)
+# - 1 Launch Template (for node group)
+# - 2 IAM Roles (cluster role, node role)
+# - 5 IAM Policy Attachments (cluster policies + node policies)
+# - 4 EKS Add-ons (coredns, vpc-cni, kube-proxy, pod-identity-agent)
+# - 1 Pod Identity IAM Role (cluster-autoscaler)
+# - 1 Pod Identity Association (cluster-autoscaler)
+# - 1 OIDC Provider (for IRSA)
+# - 1 Kubernetes Secret (connection details)
+#
+# Total: ~17 managed resources
+#
+# Creation time: 15-20 minutes
+# ==============================================================================
+
+# ==============================================================================
+# CLEANUP
+# ==============================================================================
+# To delete the cluster and all associated resources:
+#   kubectl delete ekscluster simple-prod-cluster
+#
+# This will delete all Crossplane-managed resources but will NOT delete:
+# - VPC, subnets, or route tables (pre-existing)
+# - Persistent volumes or EBS volumes created by workloads
+# - Load balancers created by Kubernetes services (if any)
+# - Application data or databases
+#
+# To verify cleanup:
+#   kubectl get ekscluster
+#   aws eks list-clusters --region us-east-2
+# ==============================================================================
