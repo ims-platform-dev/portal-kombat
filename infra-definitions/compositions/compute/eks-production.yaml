@@ -80,14 +80,7 @@ spec:
                     string:
                       type: Format
                       fmt: "%s-cluster-role"
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
-                toFieldPath: spec.forProvider.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-cluster-role"
+              # IAM Role name is set via external-name annotation above
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.clusterRoleArn
@@ -218,15 +211,7 @@ spec:
                 toFieldPath: spec.forProvider.accessConfig[0].bootstrapClusterCreatorAdminPermissions
                 policy:
                   fromFieldPath: Optional
-              # IAM role reference using selector
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
-                toFieldPath: spec.forProvider.roleArnSelector.matchLabels[portal-kombat.io/eks-component]
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "cluster-role"
+              # IAM role reference using selector - configured in base (line 269-272)
               # Status patches - expose cluster details to composite (Tasks 43-45)
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
@@ -315,14 +300,7 @@ spec:
                     string:
                       type: Format
                       fmt: "%s-node-role"
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
-                toFieldPath: spec.forProvider.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-node-role"
+              # IAM Role name is set via external-name annotation above
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.nodeRoleArn
@@ -646,22 +624,7 @@ spec:
                   toFieldPath: MergeObjects
               # Launch template reference handled by go-templating (see line 1464-1467)
               # This template resource is a placeholder - actual node groups are created dynamically
-              # Update configuration (Task 19)
-              # Configure rolling update strategy for node group updates
-              # Set maxUnavailable to 1 for rolling updates
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
-                toFieldPath: spec.forProvider.updateConfig[0].maxUnavailable
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "1"
-                  - type: Convert
-                    convert:
-                      toType: int
-                policy:
-                  fromFieldPath: Optional
+              # Update configuration: maxUnavailable is set in base (line 697)
               # Status patches
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.status
@@ -993,7 +956,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-cluster-autoscaler"
-                toFieldPath: spec.forProvider.name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
                 transforms:
                   - type: string
                     string:
@@ -1006,6 +969,7 @@ spec:
                       regexp:
                         match: "^(.{0,37}).*"
                         group: 1
+              # IAM Role name is set via external-name annotation above
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Role
@@ -1049,7 +1013,8 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-cluster-autoscaler-policy"
-                toFieldPath: spec.forProvider.name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+              # IAM RolePolicy name is set via external-name annotation above
               # Cluster name for policy resource condition
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.clusterName
@@ -1123,7 +1088,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-efs-csi"
-                toFieldPath: spec.forProvider.name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
                 transforms:
                   - type: string
                     string:
@@ -1135,6 +1100,7 @@ spec:
                       regexp:
                         match: "^(.{0,37}).*"
                         group: 1
+              # IAM Role name is set via external-name annotation above
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Role
@@ -1201,7 +1167,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-lb-controller"
-                toFieldPath: spec.forProvider.name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
                 transforms:
                   - type: string
                     string:
@@ -1213,6 +1179,7 @@ spec:
                       regexp:
                         match: "^(.{0,37}).*"
                         group: 1
+              # IAM Role name is set via external-name annotation above
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Role
@@ -1279,7 +1246,7 @@ spec:
                   strategy: string
                   string:
                     fmt: "%s-vpc-cni"
-                toFieldPath: spec.forProvider.name
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
                 transforms:
                   - type: string
                     string:
@@ -1291,6 +1258,7 @@ spec:
                       regexp:
                         match: "^(.{0,37}).*"
                         group: 1
+              # IAM Role name is set via external-name annotation above
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Role
