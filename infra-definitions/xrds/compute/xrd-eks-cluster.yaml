@@ -630,3 +630,18 @@ spec:
                   description: EFS file system IDs
                   items:
                     type: string
+                clusterRoleArn:
+                  type: string
+                  description: ARN of the EKS cluster IAM role
+                nodeRoleArn:
+                  type: string
+                  description: ARN of the node group IAM role
+                nodeGroups:
+                  type: array
+                  description: Node group status information
+                  items:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        description: Node group status

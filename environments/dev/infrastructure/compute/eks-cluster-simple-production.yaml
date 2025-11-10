@@ -143,11 +143,12 @@ spec:
     # CLOUDINIT CONFIGURATION
     # ==========================================================================
     # Optimized cloud-init settings for production nodes
-    cloudInitConfig:
-      localStorage:
-        strategy: RAID0  # Configure instance store as RAID0 if available
-      kubelet:
-        registryPullQPS: 50  # Higher pull rate for production workloads
+    # DISABLED: Base64 encoding issue with go-templating
+    # cloudInitConfig:
+    #   localStorage:
+    #     strategy: RAID0  # Configure instance store as RAID0 if available
+    #   kubelet:
+    #     registryPullQPS: 50  # Higher pull rate for production workloads
 
     # ==========================================================================
     # EKS MANAGED ADD-ONS
