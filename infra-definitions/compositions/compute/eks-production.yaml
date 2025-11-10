@@ -36,7 +36,6 @@ spec:
                     string:
                       type: Format
                       fmt: "%s"
-                      convert: ToLower
 
 
           - name: region
@@ -299,12 +298,6 @@ spec:
               - type: FromFieldPath
                 name: oidc-issuer-url
                 fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
-              - type: FromCompositeFieldPath
-                name: cluster-name
-                fromFieldPath: spec.parameters.clusterName
-              - type: FromCompositeFieldPath
-                name: region
-                fromFieldPath: spec.parameters.region
 
           # Node IAM Role (Task 12)
           # IAM role for EKS node groups (EC2 instances)
@@ -651,27 +644,22 @@ spec:
                 policy:
                   fromFieldPath: Optional
                   toFieldPath: MergeObjects
-              # Launch template reference - conditional based on useCustomLaunchTemplate
+              # Launch template reference handled by go-templating (see line 1464-1467)
+              # This template resource is a placeholder - actual node groups are created dynamically
+              # Update configuration (Task 19)
+              # Configure rolling update strategy for node group updates
+              # Set maxUnavailable to 1 for rolling updates
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.nodeGroups[0].useCustomLaunchTemplate
-                toFieldPath: spec.forProvider.launchTemplate[0].id
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.updateConfig[0].maxUnavailable
                 transforms:
                   - type: string
                     string:
                       type: Format
-                      fmt: "placeholder-will-use-selector"
-                policy:
-                  fromFieldPath: Optional
-              # Update configuration (Task 19)
-              # Configure rolling update strategy for node group updates
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.nodeGroups[0].name
-                toFieldPath: spec.forProvider.updateConfig[0].maxUnavailable
-                transforms:
-                  - type: convert
+                      fmt: "1"
+                  - type: Convert
                     convert:
                       toType: int
-                      format: "1"
                 policy:
                   fromFieldPath: Optional
               # Status patches
@@ -1618,74 +1606,5 @@ spec:
             {{ end }}
             {{ end }}
 
-            {{ range $i, $rule := .observed.composite.resource.spec.parameters.clusterSecurityGroupAdditionalRules }}
-            ---
-            # Cluster Security Group Rule: {{ $rule.description }}
-            apiVersion: ec2.aws.upbound.io/v1beta1
-            kind: SecurityGroupRule
-            metadata:
-              name: {{ $.observed.composite.resource.metadata.name }}-cluster-sg-rule-{{ $i }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: cluster-sg-rule-{{ $i }}
-              labels:
-                portal-kombat.io/eks-component: cluster-sg-rule
-            spec:
-              forProvider:
-                region: {{ $.observed.composite.resource.spec.parameters.region }}
-                type: ingress
-                protocol: {{ $rule.protocol }}
-                fromPort: {{ $rule.fromPort }}
-                toPort: {{ $rule.toPort }}
-                {{ if $rule.cidrBlocks }}
-                cidrBlocks:
-                {{ range $cidr := $rule.cidrBlocks }}
-                - {{ $cidr }}
-                {{ end }}
-                {{ end }}
-                {{ if $rule.description }}
-                description: {{ $rule.description }}
-                {{ end }}
-                securityGroupIdSelector:
-                  matchControllerRef: true
-                  matchLabels:
-                    portal-kombat.io/eks-component: cluster
-              deletionPolicy: Delete
-              providerConfigRef:
-                name: default
-            {{ end }}
-
-            {{ range $i, $rule := .observed.composite.resource.spec.parameters.nodeSecurityGroupAdditionalRules }}
-            ---
-            # Node Security Group Rule: {{ $rule.description }}
-            apiVersion: ec2.aws.upbound.io/v1beta1
-            kind: SecurityGroupRule
-            metadata:
-              name: {{ $.observed.composite.resource.metadata.name }}-node-sg-rule-{{ $i }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: node-sg-rule-{{ $i }}
-              labels:
-                portal-kombat.io/eks-component: node-sg-rule
-            spec:
-              forProvider:
-                region: {{ $.observed.composite.resource.spec.parameters.region }}
-                type: ingress
-                protocol: {{ $rule.protocol }}
-                fromPort: {{ $rule.fromPort }}
-                toPort: {{ $rule.toPort }}
-                {{ if $rule.cidrBlocks }}
-                cidrBlocks:
-                {{ range $cidr := $rule.cidrBlocks }}
-                - {{ $cidr }}
-                {{ end }}
-                {{ end }}
-                {{ if $rule.description }}
-                description: {{ $rule.description }}
-                {{ end }}
-                securityGroupIdSelector:
-                  matchControllerRef: true
-                  matchLabels:
-                    portal-kombat.io/eks-component: node-group
-              deletionPolicy: Delete
-              providerConfigRef:
-                name: default
-            {{ end }}
+            # Security group rules removed - EKS manages security groups internally
+            # To add custom security group rules, manage them separately via AWS APIs or additional compositions
