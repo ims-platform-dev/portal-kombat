@@ -139,6 +139,9 @@ jobs:
 
           Created via Port Self-Service (Run ID: ${{ steps.parse.outputs.run_id }})"
 
+          # Pull any remote changes before pushing
+          git pull --rebase origin "${branch_name}" 2>/dev/null || echo "Branch doesn't exist remotely yet"
+
           git push origin "${branch_name}"
 
       - name: Create Pull Request
