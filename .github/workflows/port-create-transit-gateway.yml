@@ -16,17 +16,41 @@ jobs:
         id: parse
         run: |
           echo '${{ inputs.port_context }}' > port_context.json
-          cat port_context.json
+          echo "=== Port Context ==="
+          cat port_context.json | jq '.'
+          echo "===================="
 
           # Extract values
-          TGW_NAME=$(jq -r '.payload.properties.tgwName' port_context.json)
-          ENVIRONMENT=$(jq -r '.payload.properties.environment' port_context.json)
+          TGW_NAME=$(jq -r '.payload.properties.tgwName // .payload.properties.tgw_name // empty' port_context.json)
+          ENVIRONMENT=$(jq -r '.payload.properties.environment // .payload.entity.properties.environment // empty' port_context.json)
           REGION=$(jq -r '.payload.properties.region // "us-east-2"' port_context.json)
-          ASN=$(jq -r '.payload.properties.amazonSideAsn // "64512"' port_context.json)
-          DNS_SUPPORT=$(jq -r '.payload.properties.dnsSupport // true' port_context.json)
-          VPN_ECMP=$(jq -r '.payload.properties.vpnEcmpSupport // true' port_context.json)
+          ASN=$(jq -r '.payload.properties.amazonSideAsn // .payload.properties.amazon_side_asn // "64512"' port_context.json)
+          DNS_SUPPORT=$(jq -r '.payload.properties.dnsSupport // .payload.properties.dns_support // "true"' port_context.json)
+          VPN_ECMP=$(jq -r '.payload.properties.vpnEcmpSupport // .payload.properties.vpn_ecmp_support // "true"' port_context.json)
           PURPOSE=$(jq -r '.payload.properties.purpose // "networking"' port_context.json)
-          RUN_ID=$(jq -r '.context.runId' port_context.json)
+          RUN_ID=$(jq -r '.context.runId // .run_id // empty' port_context.json)
+
+          # Validate required fields
+          if [ -z "$TGW_NAME" ] || [ "$TGW_NAME" = "null" ]; then
+            echo "❌ ERROR: tgwName is required but was not provided"
+            echo "Available properties:"
+            jq '.payload.properties' port_context.json
+            exit 1
+          fi
+
+          if [ -z "$ENVIRONMENT" ] || [ "$ENVIRONMENT" = "null" ]; then
+            echo "❌ ERROR: environment is required but was not provided"
+            echo "Available properties:"
+            jq '.payload.properties' port_context.json
+            exit 1
+          fi
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "❌ ERROR: runId is required but was not provided"
+            echo "Available context:"
+            jq '.context' port_context.json
+            exit 1
+          fi
 
           # Save to outputs
           echo "tgw_name=$TGW_NAME" >> $GITHUB_OUTPUT
@@ -40,6 +64,8 @@ jobs:
 
           SAFE_NAME=$(echo "$TGW_NAME" | sed 's/[^a-zA-Z0-9-]/-/g')
           echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+
+          echo "✅ Successfully parsed: tgw=$TGW_NAME, env=$ENVIRONMENT, runId=$RUN_ID"
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -189,6 +215,7 @@ jobs:
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.us.port.io
           operation: PATCH_RUN
           runId: ${{ steps.parse.outputs.run_id }}
           logMessage: |
