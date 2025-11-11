@@ -1,0 +1,16 @@
+- identifier: null-null
+  title: null
+  blueprint: infrastructureClaim
+  properties:
+    environment: null
+    claimType: objectstorage
+    region: us-east-2
+    status: pending
+    gitFilePath: https://github.com/\ims-platform-dev/portal-kombat/blob/main/environments/null/infrastructure/storage/null.yaml
+    createdBy: port-self-service
+    tags:
+      environment: null
+      purpose: general
+  relations:
+    composition: objectstorage-s3-composition
+    argocdApp: null-infrastructure-claims
