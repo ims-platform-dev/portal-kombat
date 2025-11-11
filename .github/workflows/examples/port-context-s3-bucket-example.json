@@ -1,0 +1,30 @@
+{
+  "payload": {
+    "properties": {
+      "bucketName": "portal-kombat-dev-example-12345",
+      "environment": "dev",
+      "region": "us-east-2",
+      "versioning": true,
+      "encryption": true,
+      "purpose": "general"
+    },
+    "entity": {
+      "identifier": "dev-example-bucket",
+      "title": "Example S3 Bucket",
+      "blueprint": "infrastructureClaim"
+    }
+  },
+  "context": {
+    "runId": "run_test_12345",
+    "blueprint": "infrastructureClaim",
+    "entity": "dev-example-bucket"
+  },
+  "trigger": {
+    "by": {
+      "userId": "test-user",
+      "orgId": "test-org"
+    },
+    "at": "2025-11-11T12:00:00Z",
+    "origin": "UI"
+  }
+}

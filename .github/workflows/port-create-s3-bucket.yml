@@ -15,7 +15,41 @@ jobs:
       - name: Parse Port Context
         id: parse
         run: |
+          # Write the port context to file
           echo '${{ inputs.port_context }}' > port_context.json
+
+          # Check if the context is empty or null
+          if [ ! -s port_context.json ] || [ "$(cat port_context.json)" = "null" ] || [ "$(cat port_context.json)" = "" ]; then
+            echo "❌ ERROR: Port context is empty or null"
+            echo ""
+            echo "This workflow must be triggered by Port with the following context structure:"
+            echo ""
+            cat << 'EOF'
+          {
+            "payload": {
+              "properties": {
+                "bucketName": "portal-kombat-dev-example-12345",
+                "environment": "dev",
+                "region": "us-east-2",
+                "versioning": true,
+                "encryption": true,
+                "purpose": "general"
+              }
+            },
+            "context": {
+              "runId": "run_xxxxxxxxxxxxx"
+            }
+          }
+          EOF
+            echo ""
+            echo "Port Action Configuration:"
+            echo "  - Action file: port/actions/create-s3-bucket.json"
+            echo "  - workflowInputs.port_context: '{{ . | toJson }}'"
+            echo ""
+            echo "If testing manually, provide the above JSON structure as the port_context input."
+            exit 1
+          fi
+
           echo "=== Port Context ==="
           cat port_context.json | jq '.'
           echo "===================="
@@ -217,6 +251,7 @@ jobs:
           gh pr edit "$PR_URL" --add-label "${{ steps.parse.outputs.environment }}" 2>/dev/null || echo "Label '${{ steps.parse.outputs.environment }}' not found - skipping"
 
       - name: Update Port Run Status
+        continue-on-error: true
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -231,6 +266,7 @@ jobs:
             The infrastructure will be provisioned after PR is merged and ArgoCD syncs.
 
       - name: Update Port Entity
+        continue-on-error: true
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -248,3 +284,25 @@ jobs:
               "gitFilePath": "${{ steps.create_pr.outputs.pr_url }}",
               "createdBy": "port-self-service"
             }
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "════════════════════════════════════════════════════"
+          echo "✅ Workflow completed successfully!"
+          echo "════════════════════════════════════════════════════"
+          echo ""
+          echo "📝 Pull Request: ${{ steps.create_pr.outputs.pr_url }}"
+          echo "🌿 Branch: ${branch_name}"
+          echo "🪣 Bucket: ${{ steps.parse.outputs.bucket_name }}"
+          echo "🌍 Environment: ${{ steps.parse.outputs.environment }}"
+          echo "📍 Region: ${{ steps.parse.outputs.region }}"
+          echo ""
+          echo "Next Steps:"
+          echo "  1. Review the Pull Request"
+          echo "  2. Merge to trigger ArgoCD deployment"
+          echo "  3. Crossplane will provision the S3 bucket"
+          echo ""
+          echo "ℹ️  Note: Port API updates use 'continue-on-error: true'"
+          echo "   so they won't fail the workflow during manual tests."
+          echo "════════════════════════════════════════════════════"
