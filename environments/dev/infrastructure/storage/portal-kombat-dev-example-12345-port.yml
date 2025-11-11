@@ -1,0 +1,16 @@
+- identifier: dev-portal-kombat-dev-example-12345
+  title: portal-kombat-dev-example-12345
+  blueprint: infrastructureClaim
+  properties:
+    environment: dev
+    claimType: objectstorage
+    region: us-east-2
+    status: pending
+    gitFilePath: https://github.com/\ims-platform-dev/portal-kombat/blob/main/environments/dev/infrastructure/storage/portal-kombat-dev-example-12345.yaml
+    createdBy: port-self-service
+    tags:
+      environment: dev
+      purpose: general
+  relations:
+    composition: objectstorage-s3-composition
+    argocdApp: dev-infrastructure-claims
