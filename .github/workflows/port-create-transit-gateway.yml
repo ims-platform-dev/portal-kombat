@@ -1,0 +1,188 @@
+name: Create Transit Gateway from Port
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        description: Port context containing action details
+        type: string
+
+jobs:
+  create-transit-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse Port Context
+        id: parse
+        run: |
+          echo '${{ inputs.port_context }}' > port_context.json
+          cat port_context.json
+
+          # Extract values
+          TGW_NAME=$(jq -r '.payload.properties.tgwName' port_context.json)
+          ENVIRONMENT=$(jq -r '.payload.properties.environment' port_context.json)
+          REGION=$(jq -r '.payload.properties.region // "us-east-2"' port_context.json)
+          ASN=$(jq -r '.payload.properties.amazonSideAsn // "64512"' port_context.json)
+          DNS_SUPPORT=$(jq -r '.payload.properties.dnsSupport // true' port_context.json)
+          VPN_ECMP=$(jq -r '.payload.properties.vpnEcmpSupport // true' port_context.json)
+          PURPOSE=$(jq -r '.payload.properties.purpose // "networking"' port_context.json)
+          RUN_ID=$(jq -r '.context.runId' port_context.json)
+
+          # Save to outputs
+          echo "tgw_name=$TGW_NAME" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "region=$REGION" >> $GITHUB_OUTPUT
+          echo "asn=$ASN" >> $GITHUB_OUTPUT
+          echo "dns_support=$DNS_SUPPORT" >> $GITHUB_OUTPUT
+          echo "vpn_ecmp=$VPN_ECMP" >> $GITHUB_OUTPUT
+          echo "purpose=$PURPOSE" >> $GITHUB_OUTPUT
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+          SAFE_NAME=$(echo "$TGW_NAME" | sed 's/[^a-zA-Z0-9-]/-/g')
+          echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Branch
+        run: |
+          git config user.name "Port Bot"
+          git config user.email "port-bot@example.com"
+
+          BRANCH_NAME="port/tgw-${{ steps.parse.outputs.safe_name }}-${{ steps.parse.outputs.run_id }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Transit Gateway Claim
+        run: |
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          TGW_NAME="${{ steps.parse.outputs.tgw_name }}"
+          SAFE_NAME="${{ steps.parse.outputs.safe_name }}"
+          REGION="${{ steps.parse.outputs.region }}"
+          ASN="${{ steps.parse.outputs.asn }}"
+          DNS_SUPPORT="${{ steps.parse.outputs.dns_support }}"
+          VPN_ECMP="${{ steps.parse.outputs.vpn_ecmp }}"
+          PURPOSE="${{ steps.parse.outputs.purpose }}"
+
+          mkdir -p "environments/${ENVIRONMENT}/infrastructure/routing/transit-gateways"
+
+          cat > "environments/${ENVIRONMENT}/infrastructure/routing/transit-gateways/${SAFE_NAME}.yaml" <<EOF
+          apiVersion: aws.plt.intelerad.io/v1alpha1
+          kind: TransitGateway
+          metadata:
+            name: ${SAFE_NAME}
+            labels:
+              portal-kombat.io/environment: ${ENVIRONMENT}
+              portal-kombat.io/purpose: ${PURPOSE}
+              portal-kombat.io/managed-by: port
+          spec:
+            parameters:
+              amazonSideAsn: ${ASN}
+              dnsSupport: ${DNS_SUPPORT}
+              vpnEcmpSupport: ${VPN_ECMP}
+              defaultRouteTableAssociation: false
+              defaultRouteTablePropagation: false
+              region: ${REGION}
+              tags:
+                - key: Environment
+                  value: ${ENVIRONMENT}
+                - key: ManagedBy
+                  value: Port
+                - key: Project
+                  value: portal-kombat
+                - key: Purpose
+                  value: ${PURPOSE}
+                - key: CreatedBy
+                  value: port-self-service
+          EOF
+
+      - name: Create Port YAML
+        run: |
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          TGW_NAME="${{ steps.parse.outputs.tgw_name }}"
+          SAFE_NAME="${{ steps.parse.outputs.safe_name }}"
+          REGION="${{ steps.parse.outputs.region }}"
+          PURPOSE="${{ steps.parse.outputs.purpose }}"
+
+          cat > "environments/${ENVIRONMENT}/infrastructure/routing/transit-gateways/${SAFE_NAME}-port.yml" <<EOF
+          - identifier: ${ENVIRONMENT}-tgw-${SAFE_NAME}
+            title: ${TGW_NAME}
+            blueprint: infrastructureClaim
+            properties:
+              environment: ${ENVIRONMENT}
+              claimType: transitgateway
+              region: ${REGION}
+              status: pending
+              gitFilePath: https://github.com/\${{ github.repository }}/blob/main/environments/${ENVIRONMENT}/infrastructure/routing/transit-gateways/${SAFE_NAME}.yaml
+              createdBy: port-self-service
+              tags:
+                environment: ${ENVIRONMENT}
+                purpose: ${PURPOSE}
+            relations:
+              composition: transitgateway-composition
+              argocdApp: ${ENVIRONMENT}-infrastructure-claims
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git add .
+          git commit -m "🤖 Port: Create Transit Gateway ${TGW_NAME}
+
+          Environment: ${{ steps.parse.outputs.environment }}
+          Region: ${{ steps.parse.outputs.region }}
+          ASN: ${{ steps.parse.outputs.asn }}
+
+          Created via Port Self-Service (Run ID: ${{ steps.parse.outputs.run_id }})"
+
+          git push origin "${branch_name}"
+
+      - name: Create Pull Request
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL=$(gh pr create \
+            --title "🌐 [Port] Create Transit Gateway: ${{ steps.parse.outputs.tgw_name }}" \
+            --body "## Transit Gateway Request from Port
+
+          **Name:** \`${{ steps.parse.outputs.tgw_name }}\`
+          **Environment:** \`${{ steps.parse.outputs.environment }}\`
+          **Region:** \`${{ steps.parse.outputs.region }}\`
+          **ASN:** \`${{ steps.parse.outputs.asn }}\`
+          **DNS Support:** \`${{ steps.parse.outputs.dns_support }}\`
+          **VPN ECMP Support:** \`${{ steps.parse.outputs.vpn_ecmp }}\`
+
+          ---
+
+          ### Next Steps
+
+          After this Transit Gateway is provisioned, you can:
+          1. Attach VPCs using TransitGatewayAttachment
+          2. Configure route tables with TransitGatewayRouteTable
+          3. Set up route propagations for dynamic routing
+
+          ---
+
+          🤖 *Created by Port Self-Service*
+          📋 *Port Run ID:* \`${{ steps.parse.outputs.run_id }}\`" \
+            --base main \
+            --head "${branch_name}" \
+            --label "port" \
+            --label "infrastructure" \
+            --label "networking" \
+            --label "${{ steps.parse.outputs.environment }}")
+
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Update Port Run Status
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ steps.parse.outputs.run_id }}
+          logMessage: |
+            Pull Request created successfully! 🎉
+            PR URL: ${{ steps.create_pr.outputs.pr_url }}

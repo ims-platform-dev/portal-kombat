@@ -1,0 +1,70 @@
+{
+  "identifier": "argocdApp",
+  "title": "ArgoCD Application",
+  "icon": "Argo",
+  "schema": {
+    "properties": {
+      "environment": {
+        "type": "string",
+        "title": "Environment",
+        "enum": ["dev", "staging", "prod"]
+      },
+      "layer": {
+        "type": "string",
+        "title": "Layer",
+        "enum": ["root", "crossplane-platform", "infrastructure", "k8s-services", "workloads"]
+      },
+      "syncStatus": {
+        "type": "string",
+        "title": "Sync Status",
+        "enum": ["Synced", "OutOfSync", "Unknown"],
+        "enumColors": {
+          "Synced": "green",
+          "OutOfSync": "red",
+          "Unknown": "yellow"
+        }
+      },
+      "healthStatus": {
+        "type": "string",
+        "title": "Health Status",
+        "enum": ["Healthy", "Degraded", "Progressing", "Suspended", "Missing", "Unknown"],
+        "enumColors": {
+          "Healthy": "green",
+          "Degraded": "red",
+          "Progressing": "yellow",
+          "Suspended": "darkGray",
+          "Missing": "red",
+          "Unknown": "yellow"
+        }
+      },
+      "syncWave": {
+        "type": "number",
+        "title": "Sync Wave"
+      },
+      "namespace": {
+        "type": "string",
+        "title": "Target Namespace"
+      },
+      "repoURL": {
+        "type": "string",
+        "title": "Repository URL",
+        "format": "url"
+      },
+      "path": {
+        "type": "string",
+        "title": "Path"
+      }
+    },
+    "required": ["environment", "layer"]
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {
+    "parentApp": {
+      "title": "Parent Application",
+      "target": "argocdApp",
+      "required": false,
+      "many": false
+    }
+  }
+}

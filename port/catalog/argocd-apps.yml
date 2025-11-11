@@ -1,0 +1,131 @@
+# Port catalog entries for ArgoCD Applications
+
+- identifier: dev-root-apps
+  title: Dev Root Applications
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: root
+    syncStatus: Synced
+    healthStatus: Healthy
+    namespace: argocd
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/argocd
+  relations: {}
+
+- identifier: dev-crossplane-platform
+  title: Dev Crossplane Platform
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: crossplane-platform
+    syncStatus: Synced
+    healthStatus: Healthy
+    syncWave: 0
+    namespace: crossplane-system
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: platform
+  relations:
+    parentApp: dev-root-apps
+
+- identifier: dev-crossplane-providers
+  title: Dev Crossplane Providers
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: crossplane-platform
+    syncStatus: Synced
+    healthStatus: Healthy
+    syncWave: -1
+    namespace: crossplane-system
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: platform/providers
+  relations:
+    parentApp: dev-root-apps
+
+- identifier: dev-infrastructure-claims
+  title: Dev Infrastructure Claims
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: infrastructure
+    syncStatus: Synced
+    healthStatus: Healthy
+    namespace: default
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/infrastructure
+  relations:
+    parentApp: dev-root-apps
+
+- identifier: dev-k8s-platform-services
+  title: Dev Kubernetes Platform Services
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: k8s-services
+    syncStatus: Synced
+    healthStatus: Healthy
+    namespace: default
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/cluster-addons
+  relations:
+    parentApp: dev-root-apps
+
+- identifier: dev-k8s-cert-manager
+  title: Dev Cert Manager
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: k8s-services
+    syncStatus: Synced
+    healthStatus: Healthy
+    syncWave: 10
+    namespace: cert-manager
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/cluster-addons/cert-manager
+  relations:
+    parentApp: dev-k8s-platform-services
+
+- identifier: dev-k8s-external-dns
+  title: Dev External DNS
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: k8s-services
+    syncStatus: Synced
+    healthStatus: Healthy
+    syncWave: 20
+    namespace: external-dns
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/cluster-addons/external-dns
+  relations:
+    parentApp: dev-k8s-platform-services
+
+- identifier: dev-k8s-nginx-ingress
+  title: Dev NGINX Ingress
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: k8s-services
+    syncStatus: Synced
+    healthStatus: Healthy
+    syncWave: 30
+    namespace: ingress-nginx
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/cluster-addons/nginx-ingress
+  relations:
+    parentApp: dev-k8s-platform-services
+
+- identifier: dev-workloads
+  title: Dev Workloads
+  blueprint: argocdApp
+  properties:
+    environment: dev
+    layer: workloads
+    syncStatus: Synced
+    healthStatus: Healthy
+    namespace: default
+    repoURL: https://github.com/yourusername/portal-kombat.git
+    path: environments/dev/workloads
+  relations:
+    parentApp: dev-root-apps

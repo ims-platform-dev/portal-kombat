@@ -1,0 +1,57 @@
+# Port catalog entries for Platform XRDs
+# This file registers XRDs in Port's software catalog
+
+- identifier: xrd-objectstorage
+  title: ObjectStorage XRD
+  blueprint: xrd
+  properties:
+    apiVersion: aws.platform.example/v1alpha1
+    category: storage
+    kind: ObjectStorage
+    status: available
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/xrds/storage/xrd-objectstorage.yaml
+  relations: {}
+
+- identifier: xrd-transitgateway
+  title: TransitGateway XRD
+  blueprint: xrd
+  properties:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    category: routing
+    kind: TransitGateway
+    status: available
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/xrds/routing/xrd-transit-gateway.yaml
+  relations: {}
+
+- identifier: xrd-transitgatewayattachment
+  title: TransitGatewayAttachment XRD
+  blueprint: xrd
+  properties:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    category: routing
+    kind: TransitGatewayAttachment
+    status: available
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/xrds/routing/xrd-transit-gateway-attachment.yaml
+  relations: {}
+
+- identifier: xrd-transitgatewayroutetable
+  title: TransitGatewayRouteTable XRD
+  blueprint: xrd
+  properties:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    category: routing
+    kind: TransitGatewayRouteTable
+    status: available
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/xrds/routing/xrd-transit-gateway-route-table.yaml
+  relations: {}
+
+- identifier: xrd-eks
+  title: EKS XRD
+  blueprint: xrd
+  properties:
+    apiVersion: aws.plt.intelerad.io/v1alpha1
+    category: compute
+    kind: EKS
+    status: available
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/xrds/compute/xrd-eks.yaml
+  relations: {}

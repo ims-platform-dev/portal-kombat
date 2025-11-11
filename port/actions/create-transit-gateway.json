@@ -1,0 +1,70 @@
+{
+  "identifier": "create_transit_gateway",
+  "title": "Request Transit Gateway",
+  "icon": "Network",
+  "description": "Create a new AWS Transit Gateway for hub-and-spoke networking",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "tgwName": {
+          "title": "Transit Gateway Name",
+          "type": "string",
+          "description": "Descriptive name for the Transit Gateway (e.g., hub-tgw, prod-main-tgw)",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 50
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string",
+          "enum": ["dev", "staging", "prod"],
+          "default": "dev"
+        },
+        "region": {
+          "title": "AWS Region",
+          "type": "string",
+          "enum": ["us-east-1", "us-east-2", "us-west-1", "us-west-2"],
+          "default": "us-east-2"
+        },
+        "amazonSideAsn": {
+          "title": "Amazon Side ASN",
+          "type": "string",
+          "description": "BGP ASN for the Transit Gateway (64512-65534 for private ASNs)",
+          "default": "64512",
+          "enum": ["64512", "64513", "64514", "64515", "64516", "65534"]
+        },
+        "dnsSupport": {
+          "title": "DNS Support",
+          "type": "boolean",
+          "default": true,
+          "description": "Enable DNS resolution between VPCs"
+        },
+        "vpnEcmpSupport": {
+          "title": "VPN ECMP Support",
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Equal-Cost Multi-Path routing for VPN connections"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string",
+          "enum": ["networking", "hub-spoke", "shared-services", "transit"],
+          "default": "networking",
+          "description": "Primary use case for this Transit Gateway"
+        }
+      },
+      "required": ["tgwName", "environment", "region"]
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "identifier": "ims-platform-dev/portal-kombat",
+    "workflow": "port-create-transit-gateway.yml",
+    "omitPayload": false,
+    "omitUserInputs": false,
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": false
+}

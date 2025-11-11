@@ -1,0 +1,40 @@
+{
+  "identifier": "xrd",
+  "title": "Composite Resource Definition",
+  "icon": "Blueprint",
+  "schema": {
+    "properties": {
+      "apiVersion": {
+        "type": "string",
+        "title": "API Version"
+      },
+      "category": {
+        "type": "string",
+        "title": "Category",
+        "enum": ["storage", "routing", "compute", "database", "networking"]
+      },
+      "kind": {
+        "type": "string",
+        "title": "Kind"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "enum": ["available", "degraded"],
+        "enumColors": {
+          "available": "green",
+          "degraded": "red"
+        }
+      },
+      "gitFilePath": {
+        "type": "string",
+        "title": "Git File Path",
+        "format": "url"
+      }
+    },
+    "required": ["apiVersion", "category", "kind"]
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {}
+}

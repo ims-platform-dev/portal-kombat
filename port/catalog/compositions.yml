@@ -1,0 +1,101 @@
+# Port catalog entries for Crossplane Compositions
+
+- identifier: objectstorage-s3-composition
+  title: S3 ObjectStorage Composition
+  blueprint: composition
+  properties:
+    compositionType: objectstorage
+    category: storage
+    resourceCount: 3
+    compositionStrategy: P&T
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/compositions/storage/objectstorage-s3.yaml
+    documentation: |
+      # S3 ObjectStorage Composition
+
+      Creates an S3 bucket with:
+      - Server-side encryption (AES256)
+      - Optional versioning
+      - Lifecycle rules for cost optimization
+      - Public access block enabled by default
+  relations:
+    xrd: xrd-objectstorage
+
+- identifier: transitgateway-composition
+  title: Transit Gateway Composition
+  blueprint: composition
+  properties:
+    compositionType: transitgateway
+    category: routing
+    resourceCount: 1
+    compositionStrategy: P&T
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/compositions/routing/transit-gateway.yaml
+    documentation: |
+      # Transit Gateway Composition
+
+      Creates a Transit Gateway with:
+      - Configurable ASN
+      - DNS support enabled
+      - VPN ECMP support
+      - Disabled default route table association/propagation
+  relations:
+    xrd: xrd-transitgateway
+
+- identifier: transitgatewayattachment-composition
+  title: Transit Gateway Attachment Composition
+  blueprint: composition
+  properties:
+    compositionType: transitgatewayattachment
+    category: routing
+    resourceCount: 2
+    compositionStrategy: Functions
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/compositions/routing/transit-gateway-attachment.yaml
+    documentation: |
+      # Transit Gateway Attachment Composition
+
+      Attaches VPCs to Transit Gateways with:
+      - Dynamic subnet selection via labels
+      - Transit Gateway selector
+      - VPC selector
+      - Automatic DNS support
+  relations:
+    xrd: xrd-transitgatewayattachment
+
+- identifier: transitgatewayroutetable-composition
+  title: Transit Gateway Route Table Composition
+  blueprint: composition
+  properties:
+    compositionType: transitgatewayroutetable
+    category: routing
+    resourceCount: 3
+    compositionStrategy: Functions
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/compositions/routing/transit-gateway-route-table.yaml
+    documentation: |
+      # Transit Gateway Route Table Composition
+
+      Creates route tables with:
+      - Route propagations from attachments
+      - Association with attachments
+      - Label-based selection
+  relations:
+    xrd: xrd-transitgatewayroutetable
+
+- identifier: eks-production-composition
+  title: EKS Production Composition
+  blueprint: composition
+  properties:
+    compositionType: eks
+    category: compute
+    resourceCount: 15
+    compositionStrategy: P&T
+    gitFilePath: https://github.com/yourusername/portal-kombat/blob/main/infra-definitions/compositions/compute/eks-production.yaml
+    documentation: |
+      # EKS Production Composition
+
+      Production-grade EKS cluster with:
+      - Multi-AZ node groups
+      - Managed node groups with autoscaling
+      - Add-ons: VPC CNI, CoreDNS, kube-proxy, EBS CSI driver
+      - Private endpoint access
+      - Security group rules
+  relations:
+    xrd: xrd-eks

@@ -1,0 +1,49 @@
+{
+  "identifier": "composition",
+  "title": "Crossplane Composition",
+  "icon": "Puzzle",
+  "schema": {
+    "properties": {
+      "compositionType": {
+        "type": "string",
+        "title": "Composition Type",
+        "enum": ["objectstorage", "transitgateway", "transitgatewayattachment", "transitgatewayroutetable", "rds", "vpc", "eks"]
+      },
+      "category": {
+        "type": "string",
+        "title": "Category",
+        "enum": ["storage", "routing", "compute", "database", "networking"]
+      },
+      "resourceCount": {
+        "type": "number",
+        "title": "Managed Resource Count"
+      },
+      "compositionStrategy": {
+        "type": "string",
+        "title": "Composition Strategy",
+        "enum": ["P&T", "Functions"]
+      },
+      "gitFilePath": {
+        "type": "string",
+        "title": "Git File Path",
+        "format": "url"
+      },
+      "documentation": {
+        "type": "string",
+        "title": "Documentation",
+        "format": "markdown"
+      }
+    },
+    "required": ["compositionType", "category"]
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {
+    "xrd": {
+      "title": "XRD",
+      "target": "xrd",
+      "required": false,
+      "many": false
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "identifier": "create_s3_bucket",
+  "title": "Request S3 Bucket",
+  "icon": "Bucket",
+  "description": "Create a new S3 bucket through GitOps workflow",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "bucketName": {
+          "title": "Bucket Name",
+          "type": "string",
+          "description": "Globally unique S3 bucket name (e.g., portal-kombat-dev-myapp-12345)",
+          "pattern": "^portal-kombat-[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 63
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string",
+          "enum": ["dev", "staging", "prod"],
+          "default": "dev",
+          "description": "Target environment for the bucket"
+        },
+        "region": {
+          "title": "AWS Region",
+          "type": "string",
+          "enum": ["us-east-1", "us-east-2", "us-west-1", "us-west-2"],
+          "default": "us-east-2"
+        },
+        "versioning": {
+          "title": "Enable Versioning",
+          "type": "boolean",
+          "default": true,
+          "description": "Keep multiple versions of objects"
+        },
+        "encryption": {
+          "title": "Enable Encryption",
+          "type": "boolean",
+          "default": true,
+          "description": "Server-side encryption (AES256)"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string",
+          "description": "What will this bucket be used for?",
+          "enum": [
+            "user-uploads",
+            "application-data",
+            "backups",
+            "logs",
+            "static-assets",
+            "terraform-state",
+            "general"
+          ],
+          "default": "general"
+        }
+      },
+      "required": ["bucketName", "environment", "region"]
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "identifier": "ims-platform-dev/portal-kombat",
+    "workflow": "port-create-s3-bucket.yml",
+    "omitPayload": false,
+    "omitUserInputs": false,
+    "reportWorkflowStatus": true
+  },
+  "requiredApproval": false
+}

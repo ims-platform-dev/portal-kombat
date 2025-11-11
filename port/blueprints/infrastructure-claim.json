@@ -1,0 +1,77 @@
+{
+  "identifier": "infrastructureClaim",
+  "title": "Infrastructure Claim",
+  "icon": "Crossplane",
+  "schema": {
+    "properties": {
+      "environment": {
+        "type": "string",
+        "title": "Environment",
+        "enum": ["dev", "staging", "prod"],
+        "enumColors": {
+          "dev": "blue",
+          "staging": "yellow",
+          "prod": "red"
+        }
+      },
+      "claimType": {
+        "type": "string",
+        "title": "Claim Type",
+        "enum": ["objectstorage", "transitgateway", "transitgatewayattachment", "transitgatewayroutetable", "rds", "vpc"]
+      },
+      "region": {
+        "type": "string",
+        "title": "AWS Region",
+        "default": "us-east-2"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "enum": ["pending", "ready", "failed"],
+        "enumColors": {
+          "pending": "yellow",
+          "ready": "green",
+          "failed": "red"
+        }
+      },
+      "awsResourceId": {
+        "type": "string",
+        "title": "AWS Resource ID"
+      },
+      "gitFilePath": {
+        "type": "string",
+        "title": "Git File Path",
+        "format": "url"
+      },
+      "createdBy": {
+        "type": "string",
+        "title": "Created By"
+      },
+      "cost": {
+        "type": "number",
+        "title": "Monthly Cost (USD)"
+      },
+      "tags": {
+        "type": "object",
+        "title": "Resource Tags"
+      }
+    },
+    "required": ["environment", "claimType", "region"]
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {
+    "argocdApp": {
+      "title": "ArgoCD Application",
+      "target": "argocdApp",
+      "required": false,
+      "many": false
+    },
+    "composition": {
+      "title": "Composition",
+      "target": "composition",
+      "required": false,
+      "many": false
+    }
+  }
+}

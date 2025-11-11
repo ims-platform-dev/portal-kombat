@@ -1,0 +1,214 @@
+name: Create S3 Bucket from Port
+
+on:
+  workflow_dispatch:
+    inputs:
+      port_context:
+        required: true
+        description: Port context containing action details
+        type: string
+
+jobs:
+  create-s3-bucket:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse Port Context
+        id: parse
+        run: |
+          echo '${{ inputs.port_context }}' > port_context.json
+          cat port_context.json
+
+          # Extract values from Port context
+          BUCKET_NAME=$(jq -r '.payload.properties.bucketName' port_context.json)
+          ENVIRONMENT=$(jq -r '.payload.properties.environment' port_context.json)
+          REGION=$(jq -r '.payload.properties.region // "us-east-2"' port_context.json)
+          VERSIONING=$(jq -r '.payload.properties.versioning // true' port_context.json)
+          ENCRYPTION=$(jq -r '.payload.properties.encryption // true' port_context.json)
+          PURPOSE=$(jq -r '.payload.properties.purpose // "general"' port_context.json)
+          RUN_ID=$(jq -r '.context.runId' port_context.json)
+
+          # Save to outputs
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "region=$REGION" >> $GITHUB_OUTPUT
+          echo "versioning=$VERSIONING" >> $GITHUB_OUTPUT
+          echo "encryption=$ENCRYPTION" >> $GITHUB_OUTPUT
+          echo "purpose=$PURPOSE" >> $GITHUB_OUTPUT
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+          # Generate safe filename
+          SAFE_NAME=$(echo "$BUCKET_NAME" | sed 's/[^a-zA-Z0-9-]/-/g')
+          echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Branch
+        run: |
+          git config user.name "Port Bot"
+          git config user.email "port-bot@example.com"
+
+          BRANCH_NAME="port/s3-bucket-${{ steps.parse.outputs.safe_name }}-${{ steps.parse.outputs.run_id }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Infrastructure Claim YAML
+        run: |
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          BUCKET_NAME="${{ steps.parse.outputs.bucket_name }}"
+          SAFE_NAME="${{ steps.parse.outputs.safe_name }}"
+          REGION="${{ steps.parse.outputs.region }}"
+          VERSIONING="${{ steps.parse.outputs.versioning }}"
+          ENCRYPTION="${{ steps.parse.outputs.encryption }}"
+          PURPOSE="${{ steps.parse.outputs.purpose }}"
+
+          # Create directory if it doesn't exist
+          mkdir -p "environments/${ENVIRONMENT}/infrastructure/storage"
+
+          # Create the ObjectStorage claim
+          cat > "environments/${ENVIRONMENT}/infrastructure/storage/${SAFE_NAME}.yaml" <<EOF
+          apiVersion: aws.platform.example/v1alpha1
+          kind: ObjectStorage
+          metadata:
+            name: ${SAFE_NAME}
+            labels:
+              portal-kombat.io/environment: ${ENVIRONMENT}
+              portal-kombat.io/purpose: ${PURPOSE}
+              portal-kombat.io/managed-by: port
+          spec:
+            parameters:
+              bucketName: ${BUCKET_NAME}
+              region: ${REGION}
+              versioning: ${VERSIONING}
+              encryption: ${ENCRYPTION}
+              tags:
+                - key: Environment
+                  value: ${ENVIRONMENT}
+                - key: ManagedBy
+                  value: Port
+                - key: Project
+                  value: portal-kombat
+                - key: Purpose
+                  value: ${PURPOSE}
+                - key: CreatedBy
+                  value: port-self-service
+          EOF
+
+          echo "Created infrastructure claim at environments/${ENVIRONMENT}/infrastructure/storage/${SAFE_NAME}.yaml"
+
+      - name: Create Port YAML
+        run: |
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          BUCKET_NAME="${{ steps.parse.outputs.bucket_name }}"
+          SAFE_NAME="${{ steps.parse.outputs.safe_name }}"
+          REGION="${{ steps.parse.outputs.region }}"
+          PURPOSE="${{ steps.parse.outputs.purpose }}"
+
+          # Create port.yml for catalog visibility
+          cat > "environments/${ENVIRONMENT}/infrastructure/storage/${SAFE_NAME}-port.yml" <<EOF
+          - identifier: ${ENVIRONMENT}-${SAFE_NAME}
+            title: ${BUCKET_NAME}
+            blueprint: infrastructureClaim
+            properties:
+              environment: ${ENVIRONMENT}
+              claimType: objectstorage
+              region: ${REGION}
+              status: pending
+              gitFilePath: https://github.com/\${{ github.repository }}/blob/main/environments/${ENVIRONMENT}/infrastructure/storage/${SAFE_NAME}.yaml
+              createdBy: port-self-service
+              tags:
+                environment: ${ENVIRONMENT}
+                purpose: ${PURPOSE}
+            relations:
+              composition: objectstorage-s3-composition
+              argocdApp: ${ENVIRONMENT}-infrastructure-claims
+          EOF
+
+          echo "Created Port catalog entry at environments/${ENVIRONMENT}/infrastructure/storage/${SAFE_NAME}-port.yml"
+
+      - name: Commit and Push
+        run: |
+          git add .
+          git commit -m "🤖 Port: Create S3 bucket ${BUCKET_NAME}
+
+          Environment: ${{ steps.parse.outputs.environment }}
+          Region: ${{ steps.parse.outputs.region }}
+          Purpose: ${{ steps.parse.outputs.purpose }}
+
+          Created via Port Self-Service (Run ID: ${{ steps.parse.outputs.run_id }})"
+
+          git push origin "${branch_name}"
+
+      - name: Create Pull Request
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL=$(gh pr create \
+            --title "🚀 [Port] Create S3 Bucket: ${{ steps.parse.outputs.bucket_name }}" \
+            --body "## Infrastructure Request from Port
+
+          **Bucket Name:** \`${{ steps.parse.outputs.bucket_name }}\`
+          **Environment:** \`${{ steps.parse.outputs.environment }}\`
+          **Region:** \`${{ steps.parse.outputs.region }}\`
+          **Purpose:** \`${{ steps.parse.outputs.purpose }}\`
+          **Versioning:** \`${{ steps.parse.outputs.versioning }}\`
+          **Encryption:** \`${{ steps.parse.outputs.encryption }}\`
+
+          ---
+
+          ### What will happen after merge?
+
+          1. **ArgoCD** will detect the new infrastructure claim
+          2. **Crossplane** will provision the S3 bucket in AWS
+          3. **Port** will update the entity status to \`ready\`
+
+          ### Files Created
+
+          - [\`environments/${{ steps.parse.outputs.environment }}/infrastructure/storage/${{ steps.parse.outputs.safe_name }}.yaml\`](https://github.com/\${{ github.repository }}/blob/${branch_name}/environments/${{ steps.parse.outputs.environment }}/infrastructure/storage/${{ steps.parse.outputs.safe_name }}.yaml)
+          - [\`environments/${{ steps.parse.outputs.environment }}/infrastructure/storage/${{ steps.parse.outputs.safe_name }}-port.yml\`](https://github.com/\${{ github.repository }}/blob/${branch_name}/environments/${{ steps.parse.outputs.environment }}/infrastructure/storage/${{ steps.parse.outputs.safe_name }}-port.yml)
+
+          ---
+
+          🤖 *Created by Port Self-Service*
+          📋 *Port Run ID:* \`${{ steps.parse.outputs.run_id }}\`" \
+            --base main \
+            --head "${branch_name}" \
+            --label "port" \
+            --label "infrastructure" \
+            --label "${{ steps.parse.outputs.environment }}")
+
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Update Port Run Status
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ steps.parse.outputs.run_id }}
+          logMessage: |
+            Pull Request created successfully! 🎉
+            PR URL: ${{ steps.create_pr.outputs.pr_url }}
+
+            The infrastructure will be provisioned after PR is merged and ArgoCD syncs.
+
+      - name: Update Port Entity
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          identifier: ${{ steps.parse.outputs.environment }}-${{ steps.parse.outputs.safe_name }}
+          blueprint: infrastructureClaim
+          properties: |
+            {
+              "environment": "${{ steps.parse.outputs.environment }}",
+              "claimType": "objectstorage",
+              "region": "${{ steps.parse.outputs.region }}",
+              "status": "pending",
+              "gitFilePath": "${{ steps.create_pr.outputs.pr_url }}",
+              "createdBy": "port-self-service"
+            }
