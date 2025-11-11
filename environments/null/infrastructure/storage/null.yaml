@@ -1,0 +1,25 @@
+apiVersion: aws.platform.example/v1alpha1
+kind: ObjectStorage
+metadata:
+  name: null
+  labels:
+    portal-kombat.io/environment: null
+    portal-kombat.io/purpose: general
+    portal-kombat.io/managed-by: port
+spec:
+  parameters:
+    bucketName: null
+    region: us-east-2
+    versioning: true
+    encryption: true
+    tags:
+      - key: Environment
+        value: null
+      - key: ManagedBy
+        value: Port
+      - key: Project
+        value: portal-kombat
+      - key: Purpose
+        value: general
+      - key: CreatedBy
+        value: port-self-service
