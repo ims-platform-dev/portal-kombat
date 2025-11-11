@@ -65,6 +65,9 @@
     "org": "ims-platform-dev",
     "repo": "portal-kombat",
     "workflow": "port-create-s3-bucket.yml",
+    "workflowInputs": {
+      "port_context": "{{ .action.context }}"
+    },
     "reportWorkflowStatus": true
   },
   "requiredApproval": false

@@ -63,6 +63,9 @@
     "org": "ims-platform-dev",
     "repo": "portal-kombat",
     "workflow": "port-create-transit-gateway.yml",
+    "workflowInputs": {
+      "port_context": "{{ .action.context }}"
+    },
     "reportWorkflowStatus": true
   },
   "requiredApproval": false
