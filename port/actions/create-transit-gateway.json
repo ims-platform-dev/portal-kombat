@@ -64,7 +64,7 @@
     "repo": "portal-kombat",
     "workflow": "port-create-transit-gateway.yml",
     "workflowInputs": {
-      "port_context": "{{ .action.context }}"
+      "port_context": "{{ . | toJson }}"
     },
     "reportWorkflowStatus": true
   },
