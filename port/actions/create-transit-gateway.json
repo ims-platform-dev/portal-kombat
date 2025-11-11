@@ -60,10 +60,9 @@
   },
   "invocationMethod": {
     "type": "GITHUB",
-    "identifier": "ims-platform-dev/portal-kombat",
+    "org": "ims-platform-dev",
+    "repo": "portal-kombat",
     "workflow": "port-create-transit-gateway.yml",
-    "omitPayload": false,
-    "omitUserInputs": false,
     "reportWorkflowStatus": true
   },
   "requiredApproval": false
