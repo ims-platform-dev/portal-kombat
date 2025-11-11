@@ -146,9 +146,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_URL=$(gh pr create \
-            --title "🚀 [Port] Create S3 Bucket: ${{ steps.parse.outputs.bucket_name }}" \
-            --body "## Infrastructure Request from Port
+          PR_BODY="## Infrastructure Request from Port
 
           **Bucket Name:** \`${{ steps.parse.outputs.bucket_name }}\`
           **Environment:** \`${{ steps.parse.outputs.environment }}\`
@@ -173,14 +171,21 @@ jobs:
           ---
 
           🤖 *Created by Port Self-Service*
-          📋 *Port Run ID:* \`${{ steps.parse.outputs.run_id }}\`" \
+          📋 *Port Run ID:* \`${{ steps.parse.outputs.run_id }}\`"
+
+          # Create PR (without labels to avoid errors if labels don't exist)
+          PR_URL=$(gh pr create \
+            --title "🚀 [Port] Create S3 Bucket: ${{ steps.parse.outputs.bucket_name }}" \
+            --body "$PR_BODY" \
             --base main \
-            --head "${branch_name}" \
-            --label "port" \
-            --label "infrastructure" \
-            --label "${{ steps.parse.outputs.environment }}")
+            --head "${branch_name}")
 
           echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+          # Try to add labels (non-blocking - ignore errors if labels don't exist)
+          gh pr edit "$PR_URL" --add-label "port" 2>/dev/null || echo "Label 'port' not found - skipping"
+          gh pr edit "$PR_URL" --add-label "infrastructure" 2>/dev/null || echo "Label 'infrastructure' not found - skipping"
+          gh pr edit "$PR_URL" --add-label "${{ steps.parse.outputs.environment }}" 2>/dev/null || echo "Label '${{ steps.parse.outputs.environment }}' not found - skipping"
 
       - name: Update Port Run Status
         uses: port-labs/port-github-action@v1
